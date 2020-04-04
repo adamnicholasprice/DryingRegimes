@@ -1,11 +1,14 @@
-peak2zero <- function(files){
+
   
-  library(feather)
   library(tidyr)
   library(here)
   library(tidyverse)
-  gauge = as.character(str_split(files,pattern = '/')[[1]][12])
-  data = feather::read_feather(files)
+  
+  
+  files = list.files('../data/daily_data_with_ climate_and_PET/csv',full.names = TRUE)
+  
+  gauge = as.character(tools::file_path_sans_ext(basename(files[182])))
+  data = read.csv(files[182])
   
   date = which(colnames(data)=='Date')
   q = which(colnames(data)=='X_00060_00003')
@@ -72,8 +75,14 @@ peak2zero <- function(files){
   peak2z = rep(NA, length.out = length(nf_start))
   
   for (i in 1:length(nf_start)){
-    peak2z[i] = nf_start[i] - tt[which(tt==nf_start[i])-1]
+    if (length(nf_start[i] - tt[which(tt==nf_start[i])-1])==0){
+      next
+    }
+    else{
+      peak2z[i] = nf_start[i] - tt[which(tt==nf_start[i])-1]
+    }
   }
+  peak2z = na.omit(peak2z)
   
   cv = sd(peak2z)/mean(peak2z)
   sd = sd(peak2z)
@@ -83,15 +92,8 @@ peak2zero <- function(files){
   # out = c(gauge,mean,median,sd,cv)
   out = data.frame('gauge' = gauge,'num_period'=num_period,'mean'=mean,'median'=median,'sd'=sd,'cv'=cv)
   return(out)
-}
 
 
-files = list.files(here::here('../data/daily_data_with_ climate_and_PET/feather'),full.names = TRUE)
 
-out = data.frame()
-for (i in 1:length(files)){
-  temp = peak2zero(files[i])
-  out = rbind(out,temp)
-}
 
-write_csv(out,here::here('../data/peak2zero.csv'))
+files = list.files('../data/daily_data_with_ climate_and_PET/csv',full.names = TRUE)
