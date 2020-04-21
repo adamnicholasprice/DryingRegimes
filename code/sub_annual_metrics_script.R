@@ -142,7 +142,7 @@ metrics_fun <- function(n){
 
   #Normalize intercept (log_a)~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   #Estimate median b
-  b_m<-median(metrics$b)
+  b_m<-median(metrics$b, na.rm=T)
   
   #Create function to estimate standardized log_a````````````````````````````````
   correction_fun<-function(m){
@@ -205,7 +205,7 @@ execute<-function(a){
       dry_date_start	= NA, 
       dry_date_mean	= NA, 
       log_a_norm	= NA, 
-      gage = a)}
+      gage = tools::file_path_sans_ext(basename(files))[a])}
     )
 }
   
