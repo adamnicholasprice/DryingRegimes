@@ -190,6 +190,25 @@ metrics_fun <- function(n){
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 3: Execute and write-----------------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Create error handling function
+execute<-function(a){
+  tryCatch(metrics_fun(a), error=function(e){
+    tibble(
+      event_id = NA, 
+      rec_dur	= NA, 
+      Q_mean	= NA, 
+      log_a	= NA, 
+      b	= NA, 
+      rsq	= NA, 
+      year	= NA, 
+      dry_dur	= NA, 
+      dry_date_start	= NA, 
+      dry_date_mean	= NA, 
+      log_a_norm	= NA, 
+      gage = a)}
+    )
+}
+  
 # get number of cores
 n.cores <- detectCores()-1
 
@@ -197,10 +216,10 @@ n.cores <- detectCores()-1
 cl <-  makePSOCKcluster(n.cores)
 
 #Export file list to cluster
-clusterExport(cl, c('files'), env=.GlobalEnv)
+clusterExport(cl, c('files', 'metrics_fun'), env=.GlobalEnv)
 
 # Use mpapply to exicute function
-x<-parLapply(cl,seq(1, length(files)),metrics_fun)
+x<-parLapply(cl,seq(1, length(files)),execute)
 
 # Stop the cluster
 stopCluster(cl)
