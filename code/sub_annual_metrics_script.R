@@ -322,5 +322,5 @@ export<-left_join(bulk, dur_annual) %>%
   left_join(., initial_dry_day_annual)
 
 #Write output
-write_csv(output,paste0('./data/metrics_by_year.csv'))
+write_csv(export,paste0('./data/metrics_by_year.csv'))
 
