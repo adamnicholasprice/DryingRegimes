@@ -1,7 +1,28 @@
+#####################################################################
+##
+## Script name: 
+##
+## Author: Adam N. Price
+##
+## Date Created: 2020-04-16
+##
+## Copyright (c) Adam N. Price, 2020
+## Email: adnprice@ucsc.edu
+##
+############################# Description ##########################
+##
+## 
+##   
+##
+############################# Packages #############################
+
 library(here)
 library(lubridate)
 library(feather)
 library(tools)
+
+
+############################# Code ################################
 
 
 

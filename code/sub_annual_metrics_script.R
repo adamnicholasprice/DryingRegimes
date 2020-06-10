@@ -23,7 +23,7 @@ library(lubridate)
 library(tidyverse)
 
 # Get list of files
-files <- list.files('./data/daily_data_with_ climate_and_PET/csv',full.names = TRUE)
+files <- list.files('../data/daily_data_with_ climate_and_PET/csv',full.names = TRUE,pattern = "csv")
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 2: Create Function ------------------------------------------------------
