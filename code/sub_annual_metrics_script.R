@@ -77,7 +77,7 @@ metrics_fun <- function(n){
     t<-df %>% filter(event_id == m) 
     
     #If drying event occurs
-    if(sum(t$nf_start)!=0){
+    if(sum(t$nf_start, na.rm=T)!=0){
       #Isolate recession
       clip<-t$num_date[t$nf_start==1] %>% first() 
       t<-t %>% filter(num_date<=clip)
@@ -118,7 +118,7 @@ metrics_fun <- function(n){
     t<-df %>% filter(event_id == m) 
     
     #If drying event occurs
-    if(sum(t$nf_start)!=0){
+    if(sum(t$nf_start, na.rm=T)!=0){
       #Isolate dry period
       t<-t %>% 
         #Define no flow events [there may be mulitiple]
