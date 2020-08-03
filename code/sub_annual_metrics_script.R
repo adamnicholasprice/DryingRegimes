@@ -28,6 +28,9 @@ files <- list.files('./data/daily_data_with_ climate_and_PET/csv',full.names = T
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 2: Create Function ------------------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#For testing
+#file<-files[str_detect(files,'02277600')]
+
 # Create peak 2 zero function
 metrics_fun <- function(n){
   
@@ -45,8 +48,8 @@ metrics_fun <- function(n){
     mutate(date=as_date(Date), 
            num_date = as.numeric(Date), 
            q = X_00060_00003) %>% 
-    na.omit() %>% 
-    select(date, num_date, q)
+    select(date, num_date, q) %>% 
+    na.omit() 
   
   #Identify inidividual drying events~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   #Filter flow data 
@@ -76,8 +79,11 @@ metrics_fun <- function(n){
     #Isolate indivdual recession events
     t<-df %>% filter(event_id == m) 
     
+    #Convert NA to zero
+    t<-t %>% replace_na(list(nf_start=0))
+    
     #If drying event occurs
-    if(sum(t$nf_start, na.rm=T)!=0){
+    if(sum(t$nf_start, na.rm=T)!=0 & t$q[1]!=0){
       #Isolate recession
       clip<-t$num_date[t$nf_start==1] %>% first() 
       t<-t %>% filter(num_date<=clip)
