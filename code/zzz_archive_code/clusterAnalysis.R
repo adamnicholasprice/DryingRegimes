@@ -91,9 +91,16 @@ pca_spr = prcomp(dry_spr[,c(2:ncol(dry_spr))])
 pca_sum = prcomp(dry_sum[,c(2:ncol(dry_sum))])
 pca_fall = prcomp(dry_fall[,c(2:ncol(dry_fall))])
 
-autoplot(pca_fall, loadings = TRUE, loadings.label = TRUE)
+
+w = autoplot(pca_win, loadings = TRUE, loadings.label = TRUE, main="Winter")
+s = autoplot(pca_spr, loadings = TRUE, loadings.label = TRUE, main="Spring")
+su = autoplot(pca_sum, loadings = TRUE, loadings.label = TRUE, main="Summer")
+f = autoplot(pca_fall, loadings = TRUE, loadings.label = TRUE, main="Fall")
 
 
+all = w +s +su +f +  plot_layout(ncol = 2, guides = "collect")
+
+all
 
 # Clustering
 tt = diana(dry_fall[,2:ncol(dry_win)])
