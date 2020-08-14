@@ -33,6 +33,10 @@ files <- list.files('./data/daily_data_with_ climate_and_PET/csv',full.names = T
 
 # Create peak 2 zero function
 metrics_fun <- function(n){
+  # 
+  # #For testing
+  # n<-which(str_detect(files, '01195100'))
+  # 
   
   #Setup workspace~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   #Download libraries of interest
@@ -75,7 +79,7 @@ metrics_fun <- function(n){
     mutate(nf_start = if_else(q == 0 & lag(q)!=0, 1, 0)) 
   
   #Recession metrics~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  recession_fun<-function(m){
+ recession_fun<-function(m){
     #Isolate indivdual recession events
     t<-df %>% filter(event_id == m) 
     
@@ -93,6 +97,8 @@ metrics_fun <- function(n){
       
       #Define Peak Data
       peak_date <- as.POSIXlt(t$date[1], "%Y-%m-%d")$yday[1]
+      peak_value <- t$q[1]
+      peak_quantile <- ecdf(df$q)(peak_value)
       
       #Define Peak to zero metric
       peak2zero <- nrow(t)
@@ -101,16 +107,20 @@ metrics_fun <- function(n){
       t<- t %>% mutate(dQ = lag(q) - q) %>% filter(dQ>0)
       model<-lm(log10(dQ+0.1)~log10(q+0.1), data=t)
       drying_rate <- model$coefficients[2]
-      
+      p_value <- summary(model)$coefficients[2,4]
+     
       #Create output tibble
-      output<-tibble(event_id, peak_date, peak2zero, drying_rate)
+      output<-tibble(event_id, peak_date, peak_value, peak_quantile, peak2zero, drying_rate, p_value)
       
     }else{
       output<-tibble(
         event_id = t$event_id[1],
         peak_date = as.POSIXlt(t$date[1], "%Y-%m-%d")$yday[1],
+        peak_value = NA,
+        peak_quantile = NA,
         peak2zero = NA,
-        drying_rate = NA
+        drying_rate = NA,
+        p_value = NA
       )
     }
     
