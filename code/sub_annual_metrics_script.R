@@ -33,10 +33,10 @@ files <- list.files('./data/daily_data_with_ climate_and_PET/csv',full.names = T
 
 # Create peak 2 zero function
 metrics_fun <- function(n){
-  # 
-  # #For testing
-  # n<-which(str_detect(files, '01195100'))
-  # 
+
+  #For testing
+  #n<-which(str_detect(files, '14034500'))
+
   
   #Setup workspace~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   #Download libraries of interest
@@ -56,19 +56,19 @@ metrics_fun <- function(n){
     na.omit() 
   
   #Identify inidividual drying events~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  #Filter flow data 
-  df<-df %>% 
-    #Round to nearest tenth
-    mutate(q = round(q, 1)) %>% 
-    #25% quantile thresholds
-    mutate(q_peak = if_else(q>quantile(q,0.25),  q, 0))
+  # #Filter flow data 
+  # df<-df %>%
+  #   #Round to nearest tenth
+  #   mutate(q = round(q, 1)) %>%
+  #   #25% quantile thresholds
+  #   mutate(q_peak = if_else(q>quantile(q,0.25),  q, 0))
   
   #Define peaks
   df<-df %>% 
     #Define forward and backward slope at each point
     mutate(
-      slp_b = (q_peak-lag(q_peak))/(num_date-lag(num_date)), 
-      slp_f = (lead(q_peak)-q_peak)/(lead(num_date)-num_date), 
+      slp_b = (q-lag(q))/(num_date-lag(num_date)), 
+      slp_f = (lead(q)-q)/(lead(num_date)-num_date), 
     ) %>% 
     #now flag those derivative changes
     mutate(peak_flag = if_else(slp_b>0.0001 & slp_f<0, 1,0),
@@ -79,7 +79,7 @@ metrics_fun <- function(n){
     mutate(nf_start = if_else(q == 0 & lag(q)!=0, 1, 0)) 
   
   #Recession metrics~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- recession_fun<-function(m){
+  recession_fun<-function(m){
     #Isolate indivdual recession events
     t<-df %>% filter(event_id == m) 
     
@@ -87,7 +87,9 @@ metrics_fun <- function(n){
     t<-t %>% replace_na(list(nf_start=0))
     
     #If drying event occurs
-    if(sum(t$nf_start, na.rm=T)!=0 & t$q[1]!=0){
+    if(sum(t$nf_start, na.rm=T)!=0 &        #If nf_start is na (very intiial value)
+       t$q[1]!=0 & t$q[2]!=0 & t$q[3]!=0    #there is a zero in first three days
+       ){
       #Isolate recession
       clip<-t$num_date[t$nf_start==1] %>% first() 
       t<-t %>% filter(num_date<=clip)
@@ -217,7 +219,7 @@ execute<-function(a){
 }
 
 # get number of cores
-n.cores <- detectCores()-1
+n.cores <- detectCores()
 
 #start cluster
 cl <-  makePSOCKcluster(n.cores)
@@ -243,174 +245,3 @@ output<-output %>% select(gage, calendar_year, meteorologic_year, season,
                           peak_date, peak2zero, drying_rate, 
                           dry_date_start, dry_date_mean, dry_dur)
 write_csv(output,paste0('./data/metrics_by_event.csv'))
-
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Step 4: Summarise metrics-----------------------------------------------------
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# #4.1 Create jig tibble----------------------------------------------------------
-# #Create fun
-# jig_fun<-fun<-function(n){
-#   #Define gage
-#   gage <- as.character(tools::file_path_sans_ext(basename(files)))[n]
-#   
-#   #Download data and clean
-#   df <- read_csv(file = files[n],
-#                  col_types = 'dDdddddddd') %>%
-#     mutate(date=as_date(Date),
-#            q = X_00060_00003) %>%
-#     na.omit()
-#   
-#   #Add season and meteologic year
-#   df<-df %>%
-#     mutate(
-#       #Define season
-#       season = if_else(month(date)<=3, "Winter",
-#                        if_else(month(date)>3 & month(date)<=6, "Spring",
-#                                if_else(month(date)>6 & month(date)<=9, "Summer",
-#                                        "Fall"))),
-#       calendar_year = year(date),
-#       meteorologic_year = if_else(season == 'Winter',
-#                                   calendar_year -1,
-#                                   calendar_year)) %>%
-#     group_by(meteorologic_year, season) %>%
-#     tally() %>%
-#     mutate(
-#       flow = if_else(n>81, 1,0),
-#       gage=gage) %>%
-#     select(gage, meteorologic_year, season, flow)
-#   
-#   #Export tibble
-#   df
-# }
-# 
-# #Execute Fun
-# jig<-lapply(seq(1, length(files)), jig_fun)
-# jig<-jig %>% bind_rows()
-# 
-# #4.2 Estimate stats by season--------------------------------------------------
-# #Bulk stats
-# bulk<-output %>% 
-#   group_by(gage, season) %>% 
-#   summarise(
-#     #Peak2zero
-#     peak2zero_median = median(peak2zero, na.rm = T),
-#     peak2zero_mean = mean(peak2zero, na.rm = T),
-#     peak2zero_sd = sd(peak2zero, na.rm = T),
-#     #Drying Rate
-#     drying_rate_median = median(drying_rate, na.rm = T),
-#     drying_rate_mean = mean(drying_rate, na.rm = T),
-#     drying_rate_sd = sd(drying_rate, na.rm = T),
-#     #Dry duration
-#     dry_dur_median = median(dry_dur, na.rm=T),
-#     dry_dur_mean = mean(dry_dur, na.rm=T),
-#     dry_dur_sd = sd(dry_dur, na.rm = T),
-#   ) 
-# 
-# #n_events per season
-# n_event<-output %>% 
-#   #gruop gage and year
-#   group_by(gage, meteorologic_year, season) %>% 
-#   #Summarise
-#   tally() %>% 
-#   #Add zero zero-flow event years
-#   left_join(jig,.) %>% 
-#   mutate(n = replace_na(n,0)) %>% 
-#   #Group by year
-#   group_by(gage, season) %>% 
-#   #Summarise by year
-#   summarise(
-#     n_event_mean = mean(n, na.rm=T),
-#     n_event_median = median(n, na.rm =T), 
-#     n_event_sd = sd(n, na.rm=T)
-#   )
-# 
-# #n_events per season 
-# dry_day<-output %>% 
-#   #gruop gage and year
-#   group_by(gage, meteorologic_year, season) %>% 
-#   #Summarise
-#   summarise(dry_day = min(dry_date_start)) %>% 
-#   #Group by year
-#   group_by(gage, season) %>% 
-#   #Summarise by year
-#   summarise(
-#     dry_day_start_mean = mean(dry_day, na.rm=T),
-#     dry_day_start_median = median(dry_day, na.rm =T), 
-#     dry_day_start_sd = sd(dry_day, na.rm=T)
-#   )
-# 
-# #Merge and export~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# export<-left_join(bulk, n_event) %>% 
-#   left_join(., dry_day) %>% 
-#   pivot_longer(-c(gage,season))
-# 
-# #Write output
-# write_csv(export,paste0('./data/metrics_by_season.csv'))
-# 
-# #4.3 Esitmate metrics by gage ---------------------------------------------
-# #update jig to just year~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# jig_annual<-jig %>% 
-#   group_by(gage, meteorologic_year) %>% 
-#   summarise(flow = sum(flow)) %>% 
-#   mutate(flow = if_else(flow==4,1,0)) %>% 
-#   filter(flow>0)
-# 
-# #bulk stats~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# bulk<-output %>% 
-#   group_by(gage) %>% 
-#   summarise(
-#     #Peak2zero
-#     peak2zero_median = median(peak2zero, na.rm = T),
-#     peak2zero_mean = mean(peak2zero, na.rm = T),
-#     peak2zero_sd = sd(peak2zero, na.rm = T),
-#     #Drying Rate
-#     drying_rate_median = median(drying_rate, na.rm = T),
-#     drying_rate_mean = mean(drying_rate, na.rm = T),
-#     drying_rate_sd = sd(drying_rate, na.rm = T),
-#     #Dry duration
-#     dry_dur_median = median(dry_dur, na.rm=T),
-#     dry_dur_mean = mean(dry_dur, na.rm=T),
-#     dry_dur_sd = sd(dry_dur, na.rm = T),
-#   ) 
-# 
-# #n_events per seaso
-# n_event<-output %>% 
-#   #gruop gage and year
-#   group_by(gage, meteorologic_year) %>% 
-#   #Summarise
-#   summarise(n_events = n()) %>% 
-#   #Add zero zero-flow event years
-#   left_join(jig_annual,.) %>% 
-#   mutate(n_events = replace_na(n_events,0)) %>% 
-#   #Group by year
-#   group_by(gage) %>% 
-#   #Summarise by year
-#   summarise(
-#     n_event_mean = mean(n_events, na.rm=T),
-#     n_event_median = median(n_events, na.rm =T), 
-#     n_event_sd = sd(n_events, na.rm=T)
-#   )
-# 
-# #starting dry day per season
-# dry_day<-output %>% 
-#   #gruop gage and year
-#   group_by(gage, meteorologic_year) %>% 
-#   #Summarise
-#   summarise(dry_day = min(dry_date_start)) %>% 
-#   #Group by year
-#   group_by(gage) %>% 
-#   #Summarise by year
-#   summarise(
-#     dry_day_start_mean = mean(dry_day, na.rm=T),
-#     dry_day_start_median = median(dry_day, na.rm =T), 
-#     dry_day_start_sd = sd(dry_day, na.rm=T)
-#   )
-# 
-# #Create joined export file
-# export<-left_join(bulk, n_event) %>% 
-#   left_join(., dry_day) %>% 
-#   pivot_longer(-gage)
-# 
-# #Write output
-# write_csv(export,paste0('./data/metrics_by_gage.csv'))
-# 
