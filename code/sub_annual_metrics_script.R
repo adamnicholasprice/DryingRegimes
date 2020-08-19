@@ -28,16 +28,12 @@ files <- list.files('./data/daily_data_with_ climate_and_PET/csv',full.names = T
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 2: Create Function ------------------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#For testing
-#file<-files[str_detect(files,'02277600')]
-
 # Create peak 2 zero function
 metrics_fun <- function(n){
 
   #For testing
-  #n<-which(str_detect(files, '14034500'))
+  n<-which(str_detect(files, '14034500'))
 
-  
   #Setup workspace~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   #Download libraries of interest
   library(lubridate)
@@ -56,27 +52,30 @@ metrics_fun <- function(n){
     na.omit() 
   
   #Identify inidividual drying events~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  # #Filter flow data 
-  # df<-df %>%
-  #   #Round to nearest tenth
-  #   mutate(q = round(q, 1)) %>%
-  #   #25% quantile thresholds
-  #   mutate(q_peak = if_else(q>quantile(q,0.25),  q, 0))
+  #Create new collumn with flow data 25% quantile for peak id
+  df<-df %>%
+    #Round to nearest tenth
+    mutate(q = round(q, 1)) %>%
+    #25% quantile thresholds
+    mutate(q_peak = if_else(q>quantile(q,0.25),  q, 0))
   
-  #Define peaks
+  #Define peaks using slope break method
   df<-df %>% 
     #Define forward and backward slope at each point
     mutate(
-      slp_b = (q-lag(q))/(num_date-lag(num_date)), 
-      slp_f = (lead(q)-q)/(lead(num_date)-num_date), 
+      slp_b = (q_peak-lag(q_peak))/(num_date-lag(num_date)), 
+      slp_f = (lead(q_peak)-q_peak)/(lead(num_date)-num_date),  
     ) %>% 
     #now flag those derivative changes
     mutate(peak_flag = if_else(slp_b>0.0001 & slp_f<0, 1,0),
-           peak_flag = if_else(is.na(peak_flag), 0, peak_flag)) %>% 
+           peak_flag = if_else(is.na(peak_flag), 0, peak_flag)) 
+    
+  #Define initiation of no flow
+  df<-df %>%   
     #Define individual storm events
     mutate(event_id = cumsum(peak_flag)+1) %>% 
     #Flag initiation of no flow
-    mutate(nf_start = if_else(q == 0 & lag(q)!=0, 1, 0)) 
+    mutate(nf_start = if_else(q == 0 & lag(q) != 0, 1, 0)) 
   
   #Recession metrics~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   recession_fun<-function(m){
@@ -86,10 +85,10 @@ metrics_fun <- function(n){
     #Convert NA to zero
     t<-t %>% replace_na(list(nf_start=0))
     
-    #If drying event occurs
-    if(sum(t$nf_start, na.rm=T)!=0 &        #If nf_start is na (very intiial value)
-       t$q[1]!=0 & t$q[2]!=0 & t$q[3]!=0    #there is a zero in first three days
-       ){
+    #Compute drying regime stats if the following conditions exist
+    if(sum(t$nf_start, na.rm=T)!=0 & #there is a dry period in this event
+       t$q[1]!=0 &                   #the event dosn't start with q=0
+       sum(t$q_peak)!=0){            #there is no peak value     
       #Isolate recession
       clip<-t$num_date[t$nf_start==1] %>% first() 
       t<-t %>% filter(num_date<=clip)
@@ -105,19 +104,21 @@ metrics_fun <- function(n){
       #Define Peak to zero metric
       peak2zero <- nrow(t)
       
-      #Drying rate
-      t<- t %>% mutate(dQ = lag(q) - q) %>% filter(dQ>0)
+      #Create linear model of dQ vs q
+      t<- t %>% mutate(dQ = lag(q) - q) %>% filter(dQ>=0)
       model<-lm(log10(dQ+0.1)~log10(q+0.1), data=t)
-      drying_rate <- model$coefficients[2]
-      p_value <- summary(model)$coefficients[2,4]
-     
+      
+      #Estimate drying rate [note the error catch for low slopes]
+      drying_rate <- tryCatch(model$coefficients[2], error = function(e) NA)
+      p_value <- tryCatch(summary(model)$coefficients[2,4], error = function(e) NA)
+      
       #Create output tibble
       output<-tibble(event_id, peak_date, peak_value, peak_quantile, peak2zero, drying_rate, p_value)
       
     }else{
       output<-tibble(
         event_id = t$event_id[1],
-        peak_date = as.POSIXlt(t$date[1], "%Y-%m-%d")$yday[1],
+        peak_date = NA,
         peak_value = NA,
         peak_quantile = NA,
         peak2zero = NA,
@@ -188,7 +189,7 @@ metrics_fun <- function(n){
   ) %>% 
     bind_rows() %>% 
     mutate(gage = gage) %>% 
-    drop_na()
+    drop_na(dry_dur)
   
   #Export metrics
   metrics
