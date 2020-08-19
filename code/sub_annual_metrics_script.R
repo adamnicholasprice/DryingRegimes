@@ -32,7 +32,7 @@ files <- list.files('./data/daily_data_with_ climate_and_PET/csv',full.names = T
 metrics_fun <- function(n){
 
   #For testing
-  n<-which(str_detect(files, '14034500'))
+  #n<-which(str_detect(files, '14034500'))
 
   #Setup workspace~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   #Download libraries of interest
@@ -286,7 +286,4 @@ tf<-Sys.time()
 tf-t0
 
 #Write output
-output<-output %>% select(gage, calendar_year, meteorologic_year, season,
-                          peak_date, peak2zero, drying_rate, 
-                          dry_date_start, dry_date_mean, dry_dur)
 write_csv(output,paste0('./data/metrics_by_event.csv'))
