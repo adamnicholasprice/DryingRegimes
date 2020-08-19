@@ -83,15 +83,38 @@ metrics_fun <- function(n){
     t<-df %>% filter(event_id == m) 
     
     #Convert NA to zero
-    t<-t %>% replace_na(list(nf_start=0))
+    t<-t %>% replace_na(list(nf_start=0)) 
     
     #Compute drying regime stats if the following conditions exist
     if(sum(t$nf_start, na.rm=T)!=0 & #there is a dry period in this event
        t$q[1]!=0 &                   #the event dosn't start with q=0
        sum(t$q_peak)!=0){            #there is no peak value     
-      #Isolate recession
-      clip<-t$num_date[t$nf_start==1] %>% first() 
-      t<-t %>% filter(num_date<=clip)
+      
+      #Define recession event as the length of time between peak and longest dry 
+      #    event before the next peak. 
+      #Define all drying event
+      t<-t %>% 
+        #Number drying events
+        mutate(dry_event_id = cumsum(nf_start)) %>% 
+        #Remove id number when > 0
+        mutate(dry_event_id = if_else(q>0, 0, dry_event_id)) 
+      
+      #Define dry date as the start of the longest drying event
+      dry_date <- t %>% 
+        #Count length of indivdiual drying events
+        filter(dry_event_id>0) %>% 
+        group_by(dry_event_id) %>% 
+        summarise(
+          n = n(),
+          date = min(date)) %>% 
+        #filter to max
+        arrange(-n, date) %>% 
+        filter(row_number()==1) %>% 
+        #isolate just the date
+        select(date)
+      
+      #Dry Date
+      t<-t %>% filter(date<=dry_date$date)
       
       #Define event_id
       event_id <- t$event_id[1]
@@ -136,14 +159,35 @@ metrics_fun <- function(n){
     #Isolate indivdual recession events
     t<-df %>% filter(event_id == m) 
     
+    #Convert NA to zero
+    t<-t %>% replace_na(list(nf_start=0)) 
+    
     #If drying event occurs
     if(sum(t$nf_start, na.rm=T)!=0){
-      #Isolate dry period
+      #Define recession event as the length of time between peak and longest dry event before the next peak. 
+      #Define all drying events
       t<-t %>% 
-        #Define no flow events [there may be mulitiple]
-        mutate(nf_event = cumsum(nf_start)) %>% 
-        #filter to first no flow event
-        filter(nf_event == 1, q == 0)
+        #Number drying events
+        mutate(dry_event_id = cumsum(nf_start)) %>% 
+        #Remove id number when > 0
+        mutate(dry_event_id = if_else(q>0, 0, dry_event_id)) 
+      
+      #Define longest dry event
+      dry_event <- t %>% 
+        #Count length of indivdiual drying events
+        filter(dry_event_id>0) %>% 
+        group_by(dry_event_id) %>% 
+        summarise(
+          n = n(),
+          date = min(date)) %>% 
+        #filter to max
+        arrange(-n, date) %>% 
+        filter(row_number()==1) %>% 
+        #isolate just the date
+        select(dry_event_id) %>% pull()
+      
+      #filter data frame to dry event
+      t<-t %>% filter(dry_event_id==dry_event)
       
       #Create output
       output<- tibble(
