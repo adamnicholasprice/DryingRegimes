@@ -23,7 +23,7 @@ library(lubridate)
 library(tidyverse)
 
 # Get list of files
-files <- list.files('./data/daily_data_with_ climate_and_PET/csv',full.names = TRUE)
+files <- list.files('../data/daily_data_with_ climate_and_PET/csv',pattern = "*.csv",full.names = TRUE)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 2: Create Function ------------------------------------------------------
@@ -68,7 +68,7 @@ metrics_fun <- function(n){
     #Define forward and backward slope at each point
     mutate(
       slp_b = (q_peak-lag(q_peak))/(num_date-lag(num_date)), 
-      slp_f = (lead(q_peak)-q_peak)/(lead(num_date)-num_date), 
+      slp_f = (lead(q_peak)-q_peak)/(lead(num_date)-num_date) 
     ) %>% 
     #now flag those derivative changes
     mutate(peak_flag = if_else(slp_b>0.0001 & slp_f<0, 1,0),
@@ -212,6 +212,7 @@ execute<-function(a){
       dry_date_start = NA, 
       dry_date_mean = NA, 
       dry_dur = NA, 
+      p_value = NA,
       gage = tools::file_path_sans_ext(basename(files))[a])}
   )
 }
@@ -241,8 +242,11 @@ tf-t0
 #Write output
 output<-output %>% select(gage, calendar_year, meteorologic_year, season,
                           peak_date, peak2zero, drying_rate, 
-                          dry_date_start, dry_date_mean, dry_dur)
-write_csv(output,paste0('./data/metrics_by_event.csv'))
+                          dry_date_start, dry_date_mean, dry_dur,p_value
+                          )
+
+
+write_csv(output,paste0('../data/metrics_by_event_test.csv'))
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 4: Summarise metrics-----------------------------------------------------
