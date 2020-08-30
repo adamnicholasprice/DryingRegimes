@@ -29,65 +29,57 @@ library(ggfortify)
 library(plotly)
 library(ClusterR)
 library(cluster)
+library(factoextra)
 
 
 ############################# Code ################################
 
-# dat = read.csv('../data/annual_no_flow_and_climate_metrics_climatic_year_050820.csv')
-# 
-# sites = unique(dat$sitewith0)
-# 
-# # Load ecoregion data
-# 
-# region_dat = read.csv('../data/mean_annual_no_flow_climate_watershed_EPA1_032920.csv') 
-# 
-# region = region_dat %>% select(gage_ID,Aggregated_region,Class,lat_cent,long_cent)
+### Load Data
+dat = read.csv("../data/metrics_by_event_combined.csv")
 
-# Load drying data
-
-
-dat = read.csv("../data/metrics_by_event.csv") %>% na.omit()
-
-
-## Get Mean values for the data and event counts
-dat.mean = dat %>% group_by(gage) %>% summarise_all(funs(mean),na.rm=TRUE)
-counts = dat %>% group_by(gage) %>% count()
-metric.index = c(1,5,6,7,8,10)
-metric.index.gage = c(1,5,6,7,8,10)
-
-dat.mean = dat.mean[,metric.index.gage] %>% inner_join(.,counts,by="gage") %>% na.omit()
-dat.mean$dry_date_mean <- NULL
-
-
-## omit NA
-dat = dat[,metric.index]
+dat$Name[dat$Name == "Ignore"] = "Mediterranean California" 
+dat = dat[dat$peak_quantile>.25,]
+# dat[dat$peak2zero>365,]
+# # tt = dat[dat$dry_dur>1000,]
 
 ###################### Analysis #########################
 
-# PCA
-PCA = prcomp(dat.mean[,-1],scale.=TRUE)
+dat.metrics = dat %>% select(gage,peak2zero,drying_rate,dry_date_start,dry_dur)
+dat.scale = scale(dat.metrics[,-1])
+
+############## PCA ############
+PCA = prcomp(dat.scale)
 autoplot(PCA,loadings=T,loadings.label=T)
 
 
-dat.scale = scale(dat[,-1])
-dat2 = dat[,-1]
-PCA = prcomp(dat)
-autoplot(PCA,loadings=T,loadings.label=T)
 
-
-res.pca <- prcomp(dat.scale,  graph = FALSE)
 # Visualize eigenvalues/variances
-fviz_screeplot(res.pca, addlabels = TRUE, ylim = c(0, 50))
-screeplot(res.pca)
+fviz_screeplot(PCA, addlabels = TRUE, ylim = c(0, 50))
+
+################### K-Means ######################
+fviz_nbclust(dat.scale, kmeans, method = "silhouette") + theme_classic()
+
+wcke<-eclust(dat.scale, "kmeans", hc_metric="euclidean",k=4)
+fviz_cluster(wcke, geom = "point", ellipse.type = "norm", ggtheme = theme_minimal())
 
 
-#Gaussian mixture model
+sile<-silhouette(wcke$cluster, dist(dat.scale))
+fviz_silhouette(sile)
+
+
+############# PAM clustering ##################
+# fviz_nbclust(dat.scale, pam, method = "silhouette") + theme_classic()
+# pam.res <- eclust(dat.scale, "pam", k = 4, hc_metric="euclidean")
+# 
+# fviz_cluster(pam.res, geom = "point", ellipse.type = "norm", ggtheme = theme_minimal())
+# 
+################ Gaussian mixture model ################
 
 ## https://rdrr.io/cran/ClusterR/man/predict_GMM.html 
 # http://mlampros.github.io/2016/09/12/clusterR_package/
 
 
-opt_gmm = Optimal_Clusters_GMM(dat[,-2], max_clusters = 10, criterion = "BIC", 
+opt_gmm = Optimal_Clusters_GMM(dat.metrics[,-1], max_clusters = 10, criterion = "BIC", 
                                
                                dist_mode = "maha_dist", seed_mode = "random_subset",
                                
@@ -95,9 +87,9 @@ opt_gmm = Optimal_Clusters_GMM(dat[,-2], max_clusters = 10, criterion = "BIC",
                                
                                plot_data = T)
 
-dat2 = center_scale(dat[,-2], mean_center = T, sd_scale = T)  # centering and scaling the data
+dat2 = center_scale(dat.metrics[,-1], mean_center = T, sd_scale = T)  # centering and scaling the data
 
-gmm = GMM(dat2, 6, dist_mode = "maha_dist", seed_mode = "random_subset", km_iter = 10,
+gmm = GMM(dat2, 4, dist_mode = "maha_dist", seed_mode = "random_subset", km_iter = 10,
           
           em_iter = 10, verbose = F)          
 
@@ -146,7 +138,7 @@ ggplot(PCA,aes(x=PC1,y=PC2, colour = as.factor(pr$cluster_labels)))+
 
 ##################### Agglomerative Hierarchical Clustering
 
-dat.scale = scale(dat[,-1])
+dat.scale = scale(dat.metrics[,-1])
 
 # d <- dist(dat.scale, method = "euclidean")
 # 
