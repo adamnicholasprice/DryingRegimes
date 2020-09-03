@@ -42,9 +42,12 @@ dat = dat[dat$peak_quantile>.25,]
 # dat[dat$peak2zero>365,]
 # # tt = dat[dat$dry_dur>1000,]
 
+dat = dat %>% group_by(gage) %>% count() %>% left_join(dat,.,by="gage")
+
 ###################### Analysis #########################
 
-dat.metrics = dat %>% select(gage,peak2zero,drying_rate,dry_date_start,dry_dur)
+dat.metrics = dat %>% select(gage,peak2zero,drying_rate,dry_date_start,n)
+# dat.metrics$dry_date_start = sin(2*pi*(dat.metrics$dry_date_start/365))
 dat.scale = scale(dat.metrics[,-1])
 
 ############## PCA ############
@@ -157,6 +160,23 @@ ac <- function(x) {
 
 map_dbl(m, ac)
 
+##################### Density Based Clustering #########################
+library(fpc)
+library(dbscan)
+library(factoextra)
+
+kNNdistplot(dat.scale,k = log(length(dat.scale)))
+
+db = fpc::dbscan(dat.scale,eps=.5,MinPts = log(length(dat.scale)))
+
+
+fviz_cluster(db,dat.scale, stand = FALSE, ellipse = FALSE, geom = "point",show.clust.cent = T,pointsize = .5)
+
+tt = cbind(as.data.frame(dat.scale),array(db$cluster))
+
+ggplot(PCA,aes(x=PC1,y=PC2, colour = as.factor(tt$`array(db$cluster)`)))+
+  geom_point()+
+  stat_ellipse()
 
 # Stats plot
 
