@@ -27,17 +27,21 @@ library(tidyverse)
 
 
 #Load metrics into R env
-df<-read_csv(paste0('./data/metrics_by_event.csv'))
+df<-read.csv(paste0('../data/metrics_by_event_combined.csv'))
 
 #Filter
 df<-df %>% 
-  filter(p_value<0.1) %>% 
+  filter(p_value<=0.1) %>% 
   filter(drying_rate>0)
+
+df$Name[df$Name == "Ignore"] = "Mediterranean California" 
+df = df[df$peak_quantile>.25,]
 
 #Rename event_id  (Somethign is weird here...)
 df<-df %>% 
   mutate(event_id = seq(1, nrow(df)))
 
+df = df %>% group_by(gage) %>% count() %>% left_join(df,.,by="gage")
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 2: Estimate events per year ---------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -78,6 +82,8 @@ df<-left_join(df,output)
 # Step 3: Cluster analysis -----------------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Create distance matrix with scaled vars
+df$sev = df$freq_local/df$n
+
 d <- df %>% 
   #Select vars of interest
   select("peak2zero","drying_rate", 
@@ -131,7 +137,7 @@ boxplot(drying_rate~clust_3,col=c("#e41a1c","#377eb8", "#4daf4a"), data=df, outl
 boxplot(dry_date_start~clust_3,col=c("#e41a1c","#377eb8", "#4daf4a"), data=df, outline=F, ylab = "Drying Date [julian day]", xlab=NULL)
 boxplot(dry_dur~clust_3, data=df,col=c("#e41a1c","#377eb8", "#4daf4a"), outline=F, ylab = "Dry Duration [days]", xlab=NULL)
 boxplot(peak_quantile~clust_3, data=df, col=c("#e41a1c","#377eb8", "#4daf4a"),outline=F, ylab = "Peak Flow [%]", xlab=NULL)
-boxplot(freq_local~clust_3, col=c("#e41a1c","#377eb8", "#4daf4a"), data=df, outline=F, ylab = "Drying Events", xlab=NULL)
+boxplot(freq_loca~clust_3, col=c("#e41a1c","#377eb8", "#4daf4a"), data=df, outline=F, ylab = "Drying Events", xlab=NULL)
 
 
 #Explore 6 group clustering-----------------------------------------------------
@@ -159,3 +165,4 @@ boxplot(drying_rate~clust_6,col=cols, data=df, outline=F, ylab = "Drying Rate [d
 boxplot(dry_date_start~clust_6,col=cols, data=df, outline=F, ylab = "Drying Date [julian day]", xlab=NULL)
 boxplot(dry_dur~clust_6, data=df,col=cols, outline=F, ylab = "Dry Duration [days]", xlab=NULL)
 boxplot(peak_quantile~clust_6, data=df, col=cols,outline=F, ylab = "Peak Flow [%]", xlab=NULL)
+
