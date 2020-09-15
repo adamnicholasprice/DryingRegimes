@@ -57,7 +57,7 @@ noflow.ant = noflow.ant[!is.na(noflow.ant$drying_rate),]
 
 # calculate event counts and mean data by gage
 
-mean.event = event[,c("gage","peak_date","peak_value","peak_quantile","peak2zero","drying_rate","dry_date_start","dry_date_mean",'dry_dur')] %>% 
+mean.event = event.filt[,c("gage","peak_date","peak_value","peak_quantile","peak2zero","drying_rate","dry_date_start","dry_date_mean",'dry_dur')] %>% 
   group_by(gage) %>% 
   summarise(.,mean_drying_rate = mean(drying_rate),
             n_events = n(),

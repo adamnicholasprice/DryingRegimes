@@ -87,18 +87,24 @@ remove(cl)
 output<-bind_rows(output)
 df<-left_join(df,output)
 
-### Make severity metric
-df$severity = df$freq_local/df$n
+### Make rel_freq metric
+df$rel_freq = df$freq_local/df$n
 
 dat.scale <- df %>% 
   #Select vars of interest
   select("peak2zero","drying_rate", 
          "dry_date_start", "dry_dur",
-         "peak_quantile", "severity") %>% 
+         "peak_quantile", "rel_freq") %>% 
   #scale vars
   scale()
 
-
+dat.scale <- df %>% 
+  #Select vars of interest
+  select("peak2zero","drying_rate"
+         , "dry_dur",
+         "peak_quantile", "rel_freq") %>% 
+  #scale vars
+  scale()
 ############## PCA ############
 PCA = prcomp(dat.scale)
 autoplot(PCA,loadings=T,loadings.label=T)
@@ -133,7 +139,7 @@ opt_gmm = Optimal_Clusters_GMM(dat.scale, max_clusters = 10, criterion = "BIC",
                                plot_data = T)
 
 
-gmm = GMM(dat.scale, 4, dist_mode = "maha_dist", seed_mode = "random_subset", km_iter = 10,
+gmm = GMM(dat.scale, 6, dist_mode = "maha_dist", seed_mode = "random_subset", km_iter = 10,
           
           em_iter = 10, verbose = F)          
 
@@ -178,15 +184,15 @@ fviz_cluster(db,dat.scale, stand = FALSE, ellipse = FALSE, geom = "point",show.c
 
 ######### Merge Clustering Data ###########################
 
-clust = df %>% select(gage,Name,CLASS,dec_lat_va,dec_long_va,clust_4,peak2zero,drying_rate,dry_date_start, dry_dur,peak_quantile, severity)
+clust = df %>% select(gage,Name,CLASS,dec_lat_va,dec_long_va,clust_4,peak2zero,drying_rate,dry_date_start, dry_dur,peak_quantile, rel_freq)
 
 clust = cbind(clust,pr$cluster_labels+1,wcke$cluster,db$cluster+1) 
 
 colnames(clust) = c("gage","Name","CLASS","dec_lat_va","dec_long_va","hier.4.clust","peak2zero","drying_rate", 
                     "dry_date_start", "dry_dur",
-                    "peak_quantile", "severity","gmm.clust","kmeans.clust","dbscan.cluster")
+                    "peak_quantile", "rel_freq","gmm.clust","kmeans.clust","dbscan.cluster")
 
-
+write.csv(clust,"../data/clustering_results.csv")
 ######## Plots ##########
 # Color scale
 cols <- 
@@ -239,7 +245,7 @@ dbscan.clust <- ggplot(df_out,aes(x=PC1,y=PC2,col=factor(clust$dbscan.cluster)))
 # Stats plot
 dat.metrics = df %>% select("peak2zero","drying_rate", 
                             "dry_date_start", "dry_dur",
-                            "peak_quantile", "severity")
+                            "peak_quantile", "rel_freq")
 
 h  = ggpairs(dat.metrics,
              aes(color = as.factor(clust$hier.4.clust)))
@@ -292,10 +298,18 @@ tt = boxplot(dat.metrics$peak2zero~clust$dbscan.clust, outline=F, ylab = "Peak t
 
 ############### CONUS plots ####################
 
+
+mode <- function(x) {
+  ux <- unique(x)
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
 clust = na.omit(clust)
-k.means  = clust %>% group_by(gage,CLASS,dec_long_va,dec_lat_va,kmeans.clust) %>% count() 
-hier  = clust %>% group_by(gage,CLASS,dec_long_va,dec_lat_va,hier.4.clust) %>% count() 
-gmm  = clust %>% group_by(gage,CLASS,dec_long_va,dec_lat_va,gmm.clust) %>% count() 
+k.means  = clust  %>% group_by(gage) %>% summarise(kmeans.mode = mode(kmeans.clust))
+hier  = clust %>% group_by(gage) %>% summarise(hier.4.mode = mode(hier.4.clust))
+gmm  = clust %>% group_by(gage) %>% summarise(gmm.mode = mode(gmm.clust))
+
+spat.clust = clust %>% left_join(.,k.means,by="gage")%>% left_join(.,hier,by="gage")%>% left_join(.,gmm,by="gage")
 
 states <- map_data("state")
 
@@ -303,33 +317,34 @@ kmean_CLUST <- ggplot(data = states) +
   geom_polygon(aes(x = long, y = lat, group = group), fill = "gray", color = "black") + 
   coord_fixed(1.3, xlim = c(-124.25,-70), ylim = c(26,48.5)) +
   theme_linedraw() + 
-  geom_point(data=k.means, aes(x=dec_long_va, y=dec_lat_va, shape = factor(CLASS), colour = n), size = 2, alpha=1)+
-  scale_color_viridis(trans = "log",breaks=c(1,5,10,20,50,100),option = "A",name="Number of Events\nin Cluster")+
+  geom_point(data=spat.clust, aes(x=dec_long_va, y=dec_lat_va, shape = factor(CLASS), colour = kmeans.mode), size = 2, alpha=1)+
+  scale_color_viridis(option = "A",name="Cluster Membership Mode")+
   ggtitle("k-means")
 
-kmean_CLUST + facet_wrap(~factor(kmeans.clust))
+kmean_CLUST
 
 
 hier_CLUST <- ggplot(data = states) + 
   geom_polygon(aes(x = long, y = lat, group = group), fill = "gray", color = "black") + 
   coord_fixed(1.3, xlim = c(-124.25,-70), ylim = c(26,48.5)) +
   theme_linedraw() + 
-  geom_point(data=hier, aes(x=dec_long_va, y=dec_lat_va, shape = factor(CLASS), colour = n), size = 2, alpha=1)+
-  scale_color_viridis(trans = "log",breaks=c(1,5,10,20,50,100),option = "A",name="Number of Events\nin Cluster")+
+  geom_point(data=spat.clust, aes(x=dec_long_va, y=dec_lat_va, shape = factor(CLASS), colour = hier.4.mode), size = 2, alpha=1)+
+  scale_color_viridis(option = "A",name="Cluster Membership Mode")+
   ggtitle("Hierarchical")
 
-hier_CLUST + facet_wrap(~factor(hier.4.clust))
-
+# hier_CLUST + facet_wrap(~factor(hier.4.clust))
+hier_CLUST
 
 gmm_CLUST <- ggplot(data = states) + 
   geom_polygon(aes(x = long, y = lat, group = group), fill = "gray", color = "black") + 
   coord_fixed(1.3, xlim = c(-124.25,-70), ylim = c(26,48.5)) +
   theme_linedraw() + 
-  geom_point(data=gmm, aes(x=dec_long_va, y=dec_lat_va, shape = factor(CLASS), colour = n), size = 2, alpha=1)+
-  scale_color_viridis(trans = "log",breaks=c(1,5,10,20,50,100),option = "A",name="Number of Events\nin Cluster")+
+  geom_point(data=spat.clust, aes(x=dec_long_va, y=dec_lat_va, shape = factor(CLASS), colour = gmm.mode), size = 2, alpha=1)+
+  scale_color_viridis(option = "A",name="Cluster Membership Mode")+
   ggtitle("GMM")
 
-gmm_CLUST + facet_wrap(~factor(gmm.clust))
+# gmm_CLUST + facet_wrap(~factor(gmm.clust))
+gmm_CLUST
 
 
 ###################### Centroids in 2d bins ###################
@@ -370,7 +385,7 @@ kmean.mean = clust %>% group_by(kmeans.clust) %>%
             mean.drying.rate = mean(drying_rate),
             mean.peak2zero = mean(peak2zero),
             mean.dry_dur = mean(dry_dur),
-            mean.severity = mean(severity))
+            mean.rel_freq = mean(rel_freq))
 
 drying_rate = ggplot(dat,aes(x=dry_date_start,y = drying_rate))+
   geom_bin2d(binwidth = c(5, 0.15))+
