@@ -1,200 +1,44 @@
 #####################################################################
 ##
-## Script name: 
+## Script name: dryingMetrics_clusterPlots.r
 ##
 ## Author: Adam N. Price
 ##
-## Date Created: 2020-07-31
+## Date Created: 2020-09-24
 ##
 ## Copyright (c) Adam N. Price, 2020
 ## Email: adnprice@ucsc.edu
 ##
 ############################# Description ##########################
-##  Gausian Mixture Models
+##
 ## 
-##   https://www.youtube.com/watch?v=qMTuMa86NzU
-##  https://rdrr.io/github/mccreigh/rwrfhydro/man/gages2AttrPlus.html
-##  https://en.proft.me/2017/02/1/model-based-clustering-r/
-##  https://bioconductor.org/packages/release/bioc/vignettes/PCAtools/inst/doc/PCAtools.html
+##   
 ##
 ############################# Packages #############################
 
-## load up the packages we will need:  (uncomment as required)
-library(tidyverse)
-library(mclust)
 library(ggplot2)
-library(mapdata)
-library(ggfortify)
-library(plotly)
-library(ClusterR)
-library(cluster)
-library(factoextra)
-library(GGally)
-library(vegan)
-library(clustsig)
-library(dplyr)
 library(patchwork)
-library(parallel)
-library("corrplot")
-library(scales)
-
-
+library(viridis)
 ############################# Code ################################
 
-#################### Load  and filter data #################
-df = read.csv("../data/metrics_by_event_combined.csv")
+########## Load Data #############
 
-df$Name[df$Name == "Ignore"] = "Mediterranean California" 
-df = df[df$peak_quantile>.25,]
-#Rename event_id  (Somethign is weird here...)
-df<-df %>% 
-  mutate(event_id = seq(1, nrow(df)))
-
-df = df %>% group_by(gage) %>% count() %>% left_join(df,.,by="gage")
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Step 2: Estimate events per year ---------------------------------------------
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#Create fun to estimate number of drying events in the same meterologic year per event
-fun<-function(n){
-  
-  #Libraries of interest
-  library(dplyr)
-  
-  #isolate event of interest
-  event <- df[n,]
-  
-  #count number of events in same year and at same gage
-  count<- df %>% 
-    filter(meteorologic_year == event$meteorologic_year) %>% 
-    filter(gage == event$gage) %>% 
-    nrow() 
-  
-  #Export info
-  tibble(
-    event_id = event$event_id,
-    freq_local = count
-  )
-}
-
-#run function
-n.cores <- detectCores() - 1
-cl <- makeCluster(n.cores)
-clusterExport(cl, "df")
-output<-parLapply(cl, seq(1,nrow(df)), fun)
-remove(cl)
-
-#add results to df
-output<-bind_rows(output)
-df<-left_join(df,output)
-
-### Make rel_freq metric
-df$rel_freq = df$freq_local/df$n
-
-dat.scale <- df %>% 
-  #Select vars of interest
-  select("peak2zero","drying_rate", 
-         "dry_date_start", "dry_dur",
-         "peak_quantile", "rel_freq") %>% 
-  #scale vars
-  scale()
-
-dat.scale <- df %>% 
-  #Select vars of interest
-  select("peak2zero","drying_rate"
-         , "dry_dur",
-         "peak_quantile", "rel_freq") %>% 
-  #scale vars
-  scale()
-############## PCA ############
-PCA = prcomp(dat.scale)
-autoplot(PCA,loadings=T,loadings.label=T)
+clust = read.csv('../data/clustering_results_allevents.csv')
 
 
+dat = read.csv('../data/metrics_by_event_combined_raw.csv')
 
-# Visualize eigenvalues/variances
-fviz_screeplot(PCA, addlabels = TRUE, ylim = c(0, 50))
+### Assign Ignore to Mediterranean Cali
 
-################### K-Means ######################
-fviz_nbclust(dat.scale, kmeans, method = "silhouette") + theme_classic()
+dat$Name[dat$Name == "Ignore"] = "Mediterranean California" 
 
-wcke<-eclust(dat.scale, "kmeans", hc_metric="euclidean",k=4)
-fviz_cluster(wcke, geom = "point", ellipse.type = "norm", ggtheme = theme_minimal())
+dat.mean = read.csv('../data/metrics_by_event_mean.csv')
 
-
-sile<-silhouette(wcke$cluster, dist(dat.scale))
-fviz_silhouette(sile)
-
-################ Gaussian mixture model ################
-
-## https://rdrr.io/cran/ClusterR/man/predict_GMM.html 
-# http://mlampros.github.io/2016/09/12/clusterR_package/
+dat.mean$Name[dat.mean$Name == "Ignore"] = "Mediterranean California" 
 
 
-opt_gmm = Optimal_Clusters_GMM(dat.scale, max_clusters = 10, criterion = "BIC", 
-                               
-                               dist_mode = "maha_dist", seed_mode = "random_subset",
-                               
-                               km_iter = 10, em_iter = 10, var_floor = 1e-10, 
-                               
-                               plot_data = T)
-
-
-gmm = GMM(dat.scale, 6, dist_mode = "maha_dist", seed_mode = "random_subset", km_iter = 10,
-          
-          em_iter = 10, verbose = F)          
-
-pr = predict_GMM(dat.scale, gmm$centroids, gmm$covariance_matrices, gmm$weights) 
-
-###################### Hierch Cluster ######################
-
-# Create distance matrix with scaled vars
-d <- dat.scale %>%
-  vegdist(., method = 'euclidean')
-
-#Use heirchal clustering
-fit <- hclust(d, method = "ward")
-
-#After visual inspection, select where to cut the tree
-df<- df %>% 
-  mutate(
-    clust_4 = cutree(fit, k=4))
-
-
-plot(fit, 
-     sub="Sampling Site", 
-     hang=-0.5, 
-     main = NULL,
-     labels = FALSE,
-     ylab="Height") 
-title("Cluster Analysis: Ward's Mimium Variance (Euclidean Distance)", line = 3, cex =2)
-title("4 Groups", line = 2)
-rect.hclust(fit, k=4)
-
-##################### Density Based Clustering #########################
-library(fpc)
-library(dbscan)
-library(factoextra)
-
-kNNdistplot(dat.scale,k = log(length(dat.scale)))
-
-db = fpc::dbscan(dat.scale,eps=.5,MinPts = log(length(dat.scale)))
-
-fviz_cluster(db,dat.scale, stand = FALSE, ellipse = FALSE, geom = "point",show.clust.cent = T,pointsize = .5)
-
-
-######### Merge Clustering Data ###########################
-
-clust = df %>% select(gage,Name,CLASS,dec_lat_va,dec_long_va,clust_4,peak2zero,drying_rate,dry_date_start, dry_dur,peak_quantile, rel_freq)
-
-clust = cbind(clust,pr$cluster_labels+1,wcke$cluster,db$cluster+1) 
-
-colnames(clust) = c("gage","Name","CLASS","dec_lat_va","dec_long_va","hier.4.clust","peak2zero","drying_rate", 
-                    "dry_date_start", "dry_dur",
-                    "peak_quantile", "rel_freq","gmm.clust","kmeans.clust","dbscan.cluster")
-
-write.csv(clust,"../data/clustering_results.csv")
 ######## Plots ##########
-# Color scale
+# Color scales
 cols <- 
   c("1" = "#4477AA",
     "2" = "#66CCEE",
@@ -205,6 +49,15 @@ cols <-
     "7" = "#BBBBBB",
     "8" = "#999944",
     "9" = "#332288")
+
+
+pal_regions <- 
+  c("Eastern Forests" = "#009E73",
+    "Mediterranean California" = "#F0E442",
+    "Northern Great Plains" = "#0072B2",
+    "Southern Great Plains" = "#E69F00",
+    "Western Deserts" = "#D55E00",
+    "Western Mountains" = "#56B4E9")
 
 ## PCA Plot
 
@@ -258,7 +111,7 @@ for(i in 1:h$nrow) {
 }
 
 g = ggpairs(dat.metrics,
-        aes(color = as.factor(clust$gmm.clust)))
+            aes(color = as.factor(clust$gmm.clust)))
 for(i in 1:g$nrow) {
   for(j in 1:g$ncol){
     g[i,j] <- g[i,j] + 
@@ -268,7 +121,7 @@ for(i in 1:g$nrow) {
 }
 
 k = ggpairs(dat.metrics,
-        aes(color = as.factor(clust$kmeans.clust)))
+            aes(color = as.factor(clust$kmeans.clust)))
 for(i in 1:k$nrow) {
   for(j in 1:k$ncol){
     k[i,j] <- k[i,j] + 
@@ -278,7 +131,7 @@ for(i in 1:k$nrow) {
 }
 
 d = ggpairs(dat.metrics,
-        aes(color = as.factor(clust$dbscan.clust)))
+            aes(color = as.factor(clust$dbscan.clust)))
 for(i in 1:d$nrow) {
   for(j in 1:d$ncol){
     d[i,j] <- d[i,j] + 
