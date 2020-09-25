@@ -46,13 +46,16 @@ noflow.ant = read.csv('../data/metrics_by_event_withAntCondNoFlow.csv')
 
 ############## Filter event data
 
-alpha = 0.10
-event.filt = event[event$drying_rate >0 & event$p_value<= alpha,] 
+# alpha = 0.10
+# event.filt = event[event$drying_rate >0 & event$p_value<=alpha,] 
+event.filt = event[event$drying_rate >0 & event$peak_quantile>=.25,] 
 
-peak.ant = peak.ant[peak.ant$drying_rate >0 & peak.ant$p_value<= alpha,]
+# peak.ant = peak.ant[peak.ant$drying_rate >0 & peak.ant$p_value<= alpha,]
+peak.ant = peak.ant[peak.ant$drying_rate >0 & peak.ant$peak_quantile>=.25,] 
 peak.ant = peak.ant[!is.na(peak.ant$drying_rate),]
 
-noflow.ant = noflow.ant[noflow.ant$drying_rate >0 & noflow.ant$p_value<= alpha,]
+# noflow.ant = noflow.ant[noflow.ant$drying_rate >0 & noflow.ant$p_value<= alpha,]
+noflow.ant = noflow.ant[noflow.ant$drying_rate >0 & noflow.ant$peak_quantile>=.25,] 
 noflow.ant = noflow.ant[!is.na(noflow.ant$drying_rate),]
 
 # calculate event counts and mean data by gage
