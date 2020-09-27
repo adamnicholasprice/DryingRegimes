@@ -6,11 +6,8 @@
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 #Next Steps --
-#   (1) Develop frequency metric for each event (i.e., how many other events occured in an atmospheric year)
-#   (2) Redo Cluster (create fun to explore different groups of clusters)
-#         #http://www.sthda.com/english/wiki/beautiful-dendrogram-visualizations-in-r-5-must-known-methods-unsupervised-machine-learning
-#   (3) Computer MRPP on clustered groups
-#   (4) Create plot over time that looks at some aspect of space-time dist of clustering
+#    (3) Computer MRPP on clustered groups
+#   (4) plot by region
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 1: Setup workspace ------------------------------------------------------
@@ -25,28 +22,23 @@ library(vegan)
 library(lubridate)
 library(tidyverse)
 
-
 #Load metrics into R env
-df<-read.csv(paste0('../data/metrics_by_event_combined.csv'))
+df<-read_csv(paste0('./data/metrics_by_event.csv'))
 
 #Filter
 df<-df %>% 
-  filter(p_value<=0.1) %>% 
+  filter(p_value<0.1) %>% 
   filter(drying_rate>0)
-
-df$Name[df$Name == "Ignore"] = "Mediterranean California" 
-df = df[df$peak_quantile>.25,]
 
 #Rename event_id  (Somethign is weird here...)
 df<-df %>% 
   mutate(event_id = seq(1, nrow(df)))
 
-df = df %>% group_by(gage) %>% count() %>% left_join(df,.,by="gage")
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 2: Estimate events per year ---------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Create fun to estimate number of drying events in the same meterologic year per event
-fun<-function(n){
+freq_fun<-function(n){
   
   #Libraries of interest
   library(dplyr)
@@ -71,7 +63,7 @@ fun<-function(n){
 n.cores <- detectCores() - 1
 cl <- makeCluster(n.cores)
 clusterExport(cl, "df")
-output<-parLapply(cl, seq(1,nrow(df)), fun)
+output<-parLapply(cl, seq(1,nrow(df)), freq_fun)
 remove(cl)
 
 #add results to df
@@ -82,8 +74,6 @@ df<-left_join(df,output)
 # Step 3: Cluster analysis -----------------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Create distance matrix with scaled vars
-df$sev = df$freq_local/df$n
-
 d <- df %>% 
   #Select vars of interest
   select("peak2zero","drying_rate", 
@@ -111,9 +101,7 @@ plot(fit,
      labels = FALSE,
      ylab="Height") 
 title("Cluster Analysis: Ward's Mimium Variance (Euclidean Distance)", line = 3, cex =2)
-title("3 Groups & 6 Groups", line = 2)
-rect.hclust(fit, k=3)
-rect.hclust(fit, k=6)
+rect.hclust(fit, k=3, border=c("#e41a1c","#377eb8", "#4daf4a"))
 
 #Explore 3 group clustering-----------------------------------------------------
 #Box plots
@@ -137,32 +125,80 @@ boxplot(drying_rate~clust_3,col=c("#e41a1c","#377eb8", "#4daf4a"), data=df, outl
 boxplot(dry_date_start~clust_3,col=c("#e41a1c","#377eb8", "#4daf4a"), data=df, outline=F, ylab = "Drying Date [julian day]", xlab=NULL)
 boxplot(dry_dur~clust_3, data=df,col=c("#e41a1c","#377eb8", "#4daf4a"), outline=F, ylab = "Dry Duration [days]", xlab=NULL)
 boxplot(peak_quantile~clust_3, data=df, col=c("#e41a1c","#377eb8", "#4daf4a"),outline=F, ylab = "Peak Flow [%]", xlab=NULL)
-boxplot(freq_loca~clust_3, col=c("#e41a1c","#377eb8", "#4daf4a"), data=df, outline=F, ylab = "Drying Events", xlab=NULL)
+boxplot(freq_local~clust_3, col=c("#e41a1c","#377eb8", "#4daf4a"), data=df, outline=F, ylab = "Drying Events", xlab=NULL)
 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Step 4: Space-time plots -------------------------------------------------------------------
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Create function to export tibble with gage, jday, drying type 
+dur_fun<-function(n){
+  
+  #Load libraries of interest
+  library(tidyverse)
+  
+  #Isolate event of interest
+  m<-df[n,]
+  
+  #Select cols of interest
+  m<-m %>% select(gage, peak_date, peak2zero, dry_dur, clust_3)
+  
+  #Create output tibble
+  output<-tibble(
+    gage = m$gage,
+    jday = seq(from = m$peak_date, by = 1, to = (m$peak_date + m$peak2zero + m$dry_dur)),
+    type = m$clust_3
+  )
+  
+  #Deal with jday>365
+  output<-output %>% 
+    mutate(jday = if_else(jday>365, jday%%365, jday))
+  
+  #Export
+  return(output)
+}
 
-#Explore 6 group clustering-----------------------------------------------------
-#Box plots
-#Graphing parameters (cause I wanna be fancy)
-par(mfrow=c(2,3))
-par(mar = c(2,4,0,0)+0.25)
-par(ps=12)
-par(cex.lab=14/12)
-par(cex.axis = 10/12)
+#Run function
+n.cores <- detectCores() - 1
+cl <- makeCluster(n.cores)
+clusterExport(cl, "df")
+output<-parLapply(cl, seq(1,nrow(df)), dur_fun)
+remove(cl)
 
-#Define cols
-cols<-c("#1b9e77","#d95f02","#7570b3","#e7298a","#66a61e","#e6ab02")
+#add results to df
+dur<-bind_rows(output)
 
-#Box plots
-plot(fit, 
-     sub="Sampling Site", 
-     hang=-0.5, 
-     main = NULL,
-     labels = FALSE,
-     ylab="Height") 
-rect.hclust(fit, k=6, border= cols)
-boxplot(peak2zero~clust_6, col=cols, data=df, outline=F, ylab = "Peak to Zero [days]", xlab=NULL)
-boxplot(drying_rate~clust_6,col=cols, data=df, outline=F, ylab = "Drying Rate [day^-1]", xlab=NULL)
-boxplot(dry_date_start~clust_6,col=cols, data=df, outline=F, ylab = "Drying Date [julian day]", xlab=NULL)
-boxplot(dry_dur~clust_6, data=df,col=cols, outline=F, ylab = "Dry Duration [days]", xlab=NULL)
-boxplot(peak_quantile~clust_6, data=df, col=cols,outline=F, ylab = "Peak Flow [%]", xlab=NULL)
+#Summarise by jday and type
+dur<-dur %>% 
+  group_by(jday, type) %>% 
+  summarise(n = n()) %>% 
+  pivot_wider(values_from = n, names_from = type)
 
+#Convert to prop
+dur<-dur %>% 
+  mutate(
+    tot = `1` + `2` +  `3`,
+    Type_1   = `1`/tot, 
+    Type_2   = `2`/tot,
+    Type_3   = `3`/tot) %>% 
+  select(jday, Type_1, Type_2, Type_3) %>% 
+  pivot_longer(-jday)
+
+#Plot
+dur %>% 
+  ggplot(aes(x = jday, y = value, fill = name)) +
+    geom_area() + 
+    scale_fill_manual(
+      values = c("#e41a1c","#377eb8", "#4daf4a"), 
+      name = "Drying Event Cluster"
+    ) + 
+  theme_bw() + 
+  ylab('Proportion of Drying Events') +
+  xlab('Julian Date') +
+  #Axes Options
+  theme(
+    axis.title = element_text(size=14),
+    axis.text  = element_text(size = 10)) +
+  #Legend Options
+  theme(legend.position = "bottom", 
+        legend.title = element_text(size=14), 
+        legend.text = element_text(size=10)) 
