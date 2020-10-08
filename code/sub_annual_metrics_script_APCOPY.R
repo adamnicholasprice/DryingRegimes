@@ -21,6 +21,7 @@ remove(list=ls())
 library(parallel)
 library(lubridate)
 library(tidyverse)
+library(BayesFactor)
 
 # Get list of files
 files <- list.files('../data/daily_data_with_ climate_and_PET/csv',pattern = "*.csv",full.names = TRUE)
@@ -38,6 +39,7 @@ metrics_fun <- function(n){
   #Download libraries of interest
   library(lubridate)
   library(tidyverse)
+  library(BayesFactor)
   
   #Define gage
   gage <- as.character(tools::file_path_sans_ext(basename(files)))[n]
@@ -132,12 +134,20 @@ metrics_fun <- function(n){
       t<- t %>% mutate(dQ = lag(q) - q) %>% filter(dQ>=0)
       model<-lm(log10(dQ+0.1)~log10(q+0.1), data=t)
       
+      # Extract Bayes Factor
+      BFy = log(t$dQ+0.1)
+      BFx = log(t$q+0.1)
+      temp = as.data.frame(cbind(BFx,BFy))
+      BF <- lmBF(BFy~BFx,data=temp)
+      
       #Estimate drying rate [note the error catch for low slopes]
       drying_rate <- tryCatch(model$coefficients[2], error = function(e) NA)
       p_value <- tryCatch(summary(model)$coefficients[2,4], error = function(e) NA)
+      BayesFactor <- tryCatch(extractBF(BF)[1][[1]], error = function(e) NA)
+      # BayesFactor = BFy
       
       #Create output tibble
-      output<-tibble(event_id, peak_date, peak_value, peak_quantile, peak2zero, drying_rate, p_value)
+      output<-tibble(event_id, peak_date, peak_value, peak_quantile, peak2zero, drying_rate, p_value,BayesFactor)
       
     }else{
       output<-tibble(
@@ -147,7 +157,8 @@ metrics_fun <- function(n){
         peak_quantile = NA,
         peak2zero = NA,
         drying_rate = NA,
-        p_value = NA
+        p_value = NA,
+        BayesFactor = NA
       )
     }
     
@@ -260,6 +271,7 @@ execute<-function(a){
       dry_date_mean = NA, 
       dry_dur = NA, 
       p_value = NA,
+      BayesFactor = NA,
       gage = tools::file_path_sans_ext(basename(files))[a])}
   )
 }
@@ -274,7 +286,8 @@ cl <-  makePSOCKcluster(n.cores)
 clusterExport(cl, c('files', 'metrics_fun'), env=.GlobalEnv)
 
 # Use mpapply to exicute function
-x<-parLapply(cl,seq(1, length(files)),execute) #length(files)
+# x<-parLapply(cl,seq(1, length(files)),execute) #length(files)
+x<-pblapply(seq(1, length(files)),execute,cl=cl)
 
 # Stop the cluster
 stopCluster(cl)
@@ -287,14 +300,13 @@ tf<-Sys.time()
 tf-t0
 
 #Write output
-<<<<<<< HEAD
 output<-output %>% select(gage, calendar_year, meteorologic_year, season,
                           peak_date, peak2zero, drying_rate, 
-                          dry_date_start, dry_date_mean, dry_dur,p_value
+                          dry_date_start, dry_date_mean, dry_dur,p_value,BayesFactor
                           )
 
 
-write_csv(output,paste0('../data/metrics_by_event_test.csv'))
+write_csv(output,paste0('../data/metrics_by_event_testAP.csv'))
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 4: Summarise metrics-----------------------------------------------------
@@ -466,6 +478,4 @@ write_csv(output,paste0('../data/metrics_by_event_test.csv'))
 # #Write output
 # write_csv(export,paste0('./data/metrics_by_gage.csv'))
 # 
-=======
-write_csv(output,paste0('./data/metrics_by_event.csv'))
->>>>>>> 67cc69ffa7cd9ef9d880ac785d083fc4dd9bf448
+write_csv(output,paste0('../data/metrics_by_eventAP.csv'))

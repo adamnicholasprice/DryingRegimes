@@ -35,7 +35,7 @@ library(clustsig)
 library(dplyr)
 library(patchwork)
 library(parallel)
-library("corrplot")
+library(corrplot)
 library(scales)
 library(viridis)
 
@@ -106,6 +106,10 @@ dat.scale <- df %>%
          "peak_quantile", "rel_freq") %>% 
   #scale vars
   scale()
+
+
+# NbClust(x, diss="NULL", distance = "euclidean", min.nc=2, max.nc=10, 
+#         method = "ward", index = "dindex", alphaBeale = 0.1)
 ############## PCA ############
 PCA = prcomp(dat.scale)
 autoplot(PCA,loadings=T,loadings.label=T)
@@ -114,6 +118,8 @@ autoplot(PCA,loadings=T,loadings.label=T)
 
 # Visualize eigenvalues/variances
 fviz_screeplot(PCA, addlabels = TRUE, ylim = c(0, 50))
+
+# var$contribution
 
 ################### K-Means ######################
 fviz_nbclust(dat.scale, kmeans, method = "silhouette") + theme_classic()

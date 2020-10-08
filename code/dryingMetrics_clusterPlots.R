@@ -19,6 +19,8 @@
 library(ggplot2)
 library(patchwork)
 library(viridis)
+library(tidyverse)
+library(raster)
 ############################# Code ################################
 
 ########## Load Data #############
@@ -26,7 +28,7 @@ library(viridis)
 clust = read.csv('../data/clustering_results_allevents.csv')
 
 
-dat = read.csv('../data/metrics_by_event_combined_raw.csv')
+dat = read.csv('../data/metrics_by_event_combined.csv')
 
 ### Assign Ignore to Mediterranean Cali
 
@@ -50,6 +52,8 @@ cols <-
     "8" = "#999944",
     "9" = "#332288")
 
+ggplot() + geom_point(aes(x=y,y=y,colour=factor(y)),size=4)+ scale_color_manual(values = cols)
+
 
 pal_regions <- 
   c("Eastern Forests" = "#009E73",
@@ -59,7 +63,171 @@ pal_regions <-
     "Western Deserts" = "#D55E00",
     "Western Mountains" = "#56B4E9")
 
-## PCA Plot
+
+############### CONUS plots ####################
+
+
+mode <- function(x) {
+  ux <- unique(x)
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
+clust = na.omit(clust)
+k.means  = clust  %>% group_by(gage) %>% summarise(kmeans.mode = mode(kmeans.clust),
+                                                   kmeans.unique = n_distinct(kmeans.clust))
+hier  = clust %>% group_by(gage) %>% summarise(hier.mode = mode(hier.4.clust),
+                                               hier.unique = n_distinct(hier.4.clust))
+gmm  = clust %>% group_by(gage) %>% summarise(gmm.mode = mode(gmm.clust),
+                                              gmm.unique = n_distinct(gmm.clust))
+dbscan = clust %>% group_by(gage) %>% summarise(dbscan.mode = mode(dbscan.cluster),
+                                                db.unique = n_distinct(dbscan.cluster))
+
+spat.clust = clust %>% left_join(.,k.means,by="gage")%>% left_join(.,hier,by="gage")%>% left_join(.,gmm,by="gage")%>% 
+  left_join(.,dbscan,by="gage")
+states <- map_data("state")
+
+kmean_CLUST <- ggplot(data = states) + 
+  geom_polygon(aes(x = long, y = lat, group = group), fill = "gray", color = "black") + 
+  coord_fixed(1.3, xlim = c(-124.25,-70), ylim = c(26,48.5)) +
+  theme_linedraw() + 
+  geom_point(data=spat.clust, aes(x=dec_long_va, y=dec_lat_va, shape = factor(CLASS),size = 1.5/(kmeans.unique)),alpha=1)+
+  geom_point(data=spat.clust, aes(x=dec_long_va, y=dec_lat_va, shape = factor(CLASS),colour = factor(kmeans.mode), size = 1/kmeans.unique),alpha=.7)+
+  scale_color_manual(name = "Cluster Membership Mode",values = cols)+
+  scale_radius(trans='sqrt',breaks = c(.2,.4,.6,.8,1),labels = c(5,4,3,2,1),name = "Number of Cluster Changes") +
+  scale_shape(name="Gage Type")+
+  ggtitle("k-means")
+
+kmean_CLUST
+
+
+hier_CLUST <- ggplot(data = states) + 
+  geom_polygon(aes(x = long, y = lat, group = group), fill = "gray", color = "black") + 
+  coord_fixed(1.3, xlim = c(-124.25,-70), ylim = c(26,48.5)) +
+  theme_linedraw() + 
+  geom_point(data=spat.clust, aes(x=dec_long_va, y=dec_lat_va, shape = factor(CLASS),size = 1.5/hier.unique),colour="black", alpha=1)+
+  geom_point(data=spat.clust, aes(x=dec_long_va, y=dec_lat_va, shape = factor(CLASS), colour = factor(hier.mode),size = 1/(hier.unique)), alpha=.7)+
+  scale_color_manual(name = "Cluster Membership Mode",values = cols)+
+  scale_radius(trans='sqrt',breaks = c(.2,.4,.6,.8,1),labels = c(5,4,3,2,1),name = "Number of Cluster Changes") +
+  scale_shape(name="Gage Type")+
+  ggtitle("Hierarchical")
+
+hier_CLUST
+
+gmm_CLUST <- ggplot(data = states) + 
+  geom_polygon(aes(x = long, y = lat, group = group), fill = "gray", color = "black") + 
+  coord_fixed(1.3, xlim = c(-124.25,-70), ylim = c(26,48.5)) +
+  theme_linedraw() + 
+  geom_point(data=spat.clust, aes(x=dec_long_va, y=dec_lat_va, shape = factor(CLASS),size = 1.5/gmm.unique),colour="black", alpha=1)+
+  geom_point(data=spat.clust, aes(x=dec_long_va, y=dec_lat_va, shape = factor(CLASS), colour = factor(gmm.mode),size = 1/(gmm.unique)), alpha=.7)+
+  scale_color_manual(name = "Cluster Membership Mode",values = cols)+
+  scale_radius(trans='sqrt',breaks = c(.2,.4,.6,.8,1),labels = c(5,4,3,2,1),name = "Number of Cluster Changes") +
+  scale_shape(name="Gage Type")+
+  ggtitle("GMM")
+
+# gmm_CLUST + facet_wrap(~factor(gmm.clust))
+gmm_CLUST
+
+
+db_CLUST <- ggplot(data = states) + 
+  geom_polygon(aes(x = long, y = lat, group = group), fill = "gray", color = "black") + 
+  coord_fixed(1.3, xlim = c(-124.25,-70), ylim = c(26,48.5)) +
+  theme_linedraw() + 
+  geom_point(data=spat.clust, aes(x=dec_long_va, y=dec_lat_va, shape = factor(CLASS), colour = dbscan.mode), size = 2, alpha=1)+
+  scale_color_viridis(option = "A",name="Cluster Membership Mode")+
+  scale_
+  ggtitle("DBSCAN")
+
+# gmm_CLUST + facet_wrap(~factor(gmm.clust))
+db_CLUST
+
+###################### Centroids in 2d bins ###################
+
+dat = dat %>% group_by(gage) %>% count() %>% left_join(dat,.,by="gage")
+
+region.mean  = dat.mean %>% group_by(Name,CLASS)%>%
+  select(Name,CLASS,mean_dry_date_start,mean_drying_rate,mean_peak2zero,mean_dry_dur,n_events) %>%
+  summarise(.,mean.dry.date = mean(mean_dry_date_start),
+            mean.drying.rate = mean(mean_drying_rate),
+            mean.peak2zero = mean(mean_peak2zero),
+            mean.dry_dur = mean(mean_dry_dur),
+            mean.n_events = mean(n_events)
+  )
+
+kmean.mean = clust %>% group_by(kmeans.clust) %>%
+  summarise(.,mean.dry.date = mean(dry_date_start),
+            mean.drying.rate = mean(drying_rate),
+            mean.peak2zero = mean(peak2zero),
+            mean.dry_dur = mean(dry_dur),
+            mean.rel_freq = mean(rel_freq))
+
+drying_rate = ggplot(dat,aes(x=dry_date_start,y = drying_rate))+
+  geom_bin2d(binwidth = c(5, 0.15))+
+  xlab("Dry Start Date (day)")+
+  ylab("Drying Rate\n(1/day)") +
+  scale_fill_viridis(limit=c(0,120))
+# scale_fill_gradientn(trans = 'log',labels=trans_format("identity", function(x) round(x,2)),limits = c(1,300),colors = viridis(10),breaks =c(1,10,50,100,200))
+drying_rate = drying_rate + 
+  geom_point(data=region.mean,aes(x=mean.dry.date,y=mean.drying.rate,group=paste(Name,CLASS),shape = factor(CLASS)),colour="white",size = 5, alpha=.75)
+drying_rate = drying_rate + geom_point(data=region.mean,aes(x=mean.dry.date,y=mean.drying.rate,group=paste(Name,CLASS),color=Name,shape = factor(CLASS)),size = 4, alpha=.25)
+
+drying_rate = drying_rate + 
+  geom_point(data=kmean.mean,aes(x=mean.dry.date,y=mean.drying.rate,color=factor(kmeans.clust)),shape=15,size = 4)+
+  scale_color_manual(values = c(pal_regions,cols))
+
+peak2zero = ggplot(dat,aes(x=dry_date_start,y = peak2zero))+
+  geom_bin2d(binwidth = c(5,5)) +
+  ylim(0,365)+
+  xlab("Dry Start Date (day)")+
+  ylab("Peak2Zero\n(day)") +
+  scale_fill_viridis(limit=c(0,120))
+# scale_fill_gradientn(trans = 'log',labels=trans_format("identity", function(x) round(x,2)),limits = c(1,300),colors = viridis(10),breaks =c(1,10,50,100,200))
+
+peak2zero = peak2zero + 
+  geom_point(data=region.mean,aes(x=mean.dry.date,y=mean.peak2zero,group=paste(Name,CLASS),shape = factor(CLASS)),colour="white",size = 5, alpha=.25)
+peak2zero = peak2zero + geom_point(data=region.mean,aes(x=mean.dry.date,y=mean.peak2zero,group=paste(Name,CLASS),color=Name,shape = factor(CLASS)),size = 4, alpha=.25)+
+  scale_color_manual(values = pal_regions)
+
+peak2zero = peak2zero + 
+  geom_point(data=kmean.mean,aes(x=mean.dry.date,y=mean.peak2zero,color=factor(kmeans.clust)),shape=15,size = 4)+
+  scale_color_manual(values = c(pal_regions,cols))
+
+dry_dur = ggplot(dat,aes(x=dry_date_start,y = dry_dur)) +
+  geom_bin2d(binwidth = c(5,5)) +
+  ylim(0,365) +
+  xlab("Dry Start Date (day)")+
+  ylab("Drying Duration\n(day)") +
+  scale_fill_viridis(limit=c(0,120))
+# scale_fill_gradientn(trans = 'log',labels=trans_format("identity", function(x) round(x,2)),limits = c(1,300),colors = viridis(10),breaks =c(1,10,50,100,200))
+
+dry_dur = dry_dur + 
+  geom_point(data=region.mean,aes(x=mean.dry.date,y=mean.dry_dur,group=paste(Name,CLASS),shape = factor(CLASS)),colour="white",size = 5, alpha=.25)
+
+dry_dur = dry_dur + geom_point(data=region.mean,aes(x=mean.dry.date,y=mean.dry_dur,group=paste(Name,CLASS),color=Name,shape = factor(CLASS)),size = 4, alpha=.25)+
+  scale_color_manual(values = pal_regions)
+
+dry_dur = dry_dur + 
+  geom_point(data=kmean.mean,aes(x=mean.dry.date,y=mean.dry_dur,color=factor(kmeans.clust)),shape=15,size = 4)+
+  scale_color_manual(values = c(pal_regions,cols))
+
+
+n_events = ggplot(dat,aes(x=dry_date_start,y = n)) +
+  geom_bin2d(binwidth = c(5,7)) +
+  # ylim(0,365) +
+  xlab("Dry Start Date (day)")+
+  ylab("Number of Events") +
+  scale_fill_viridis(limit=c(0,120))
+# scale_fill_gradientn(trans = 'log',labels=trans_format("identity", function(x) round(x,2)),limits = c(1,300),colors = viridis(10),breaks =c(1,10,50,100,200))
+
+n_events = n_events + 
+  geom_point(data=region.mean,aes(x=mean.dry.date,y=mean.n_events,group=paste(Name,CLASS),shape = factor(CLASS)),colour="white",size = 5, alpha=.25)
+n_events = n_events+geom_point(data=region.mean,aes(x=mean.dry.date,y=mean.n_events,group=paste(Name,CLASS),color=Name,shape = factor(CLASS)),size = 4, alpha=.25)+
+  scale_color_manual(values = pal_regions)
+
+binned  = drying_rate + peak2zero   + dry_dur + plot_layout(ncol = 3, guides = "collect") & theme(legend.position = 'right') & ggtitle("k-means")
+
+binned
+
+###################### PCA Plot #############
 
 PCA = prcomp(dat.scale)
 var <- get_pca_var(PCA)
@@ -148,161 +316,3 @@ d
 
 tt = boxplot(dat.metrics$peak2zero~clust$dbscan.clust, outline=F, ylab = "Peak to Zero [days]", xlab=NULL)
 
-
-############### CONUS plots ####################
-
-
-mode <- function(x) {
-  ux <- unique(x)
-  ux[which.max(tabulate(match(x, ux)))]
-}
-
-clust = na.omit(clust)
-k.means  = clust  %>% group_by(gage) %>% summarise(kmeans.mode = mode(kmeans.clust))
-hier  = clust %>% group_by(gage) %>% summarise(hier.4.mode = mode(hier.4.clust))
-gmm  = clust %>% group_by(gage) %>% summarise(gmm.mode = mode(gmm.clust))
-
-spat.clust = clust %>% left_join(.,k.means,by="gage")%>% left_join(.,hier,by="gage")%>% left_join(.,gmm,by="gage")
-
-states <- map_data("state")
-
-kmean_CLUST <- ggplot(data = states) + 
-  geom_polygon(aes(x = long, y = lat, group = group), fill = "gray", color = "black") + 
-  coord_fixed(1.3, xlim = c(-124.25,-70), ylim = c(26,48.5)) +
-  theme_linedraw() + 
-  geom_point(data=spat.clust, aes(x=dec_long_va, y=dec_lat_va, shape = factor(CLASS), colour = kmeans.mode), size = 2, alpha=1)+
-  scale_color_viridis(option = "A",name="Cluster Membership Mode")+
-  ggtitle("k-means")
-
-kmean_CLUST
-
-
-hier_CLUST <- ggplot(data = states) + 
-  geom_polygon(aes(x = long, y = lat, group = group), fill = "gray", color = "black") + 
-  coord_fixed(1.3, xlim = c(-124.25,-70), ylim = c(26,48.5)) +
-  theme_linedraw() + 
-  geom_point(data=spat.clust, aes(x=dec_long_va, y=dec_lat_va, shape = factor(CLASS), colour = hier.4.mode), size = 2, alpha=1)+
-  scale_color_viridis(option = "A",name="Cluster Membership Mode")+
-  ggtitle("Hierarchical")
-
-# hier_CLUST + facet_wrap(~factor(hier.4.clust))
-hier_CLUST
-
-gmm_CLUST <- ggplot(data = states) + 
-  geom_polygon(aes(x = long, y = lat, group = group), fill = "gray", color = "black") + 
-  coord_fixed(1.3, xlim = c(-124.25,-70), ylim = c(26,48.5)) +
-  theme_linedraw() + 
-  geom_point(data=spat.clust, aes(x=dec_long_va, y=dec_lat_va, shape = factor(CLASS), colour = gmm.mode), size = 2, alpha=1)+
-  scale_color_viridis(option = "A",name="Cluster Membership Mode")+
-  ggtitle("GMM")
-
-# gmm_CLUST + facet_wrap(~factor(gmm.clust))
-gmm_CLUST
-
-
-###################### Centroids in 2d bins ###################
-
-dat = read.csv('../data/metrics_by_event_combined.csv')
-
-### Assign Ignore to Mediterranean Cali
-
-dat$Name[dat$Name == "Ignore"] = "Mediterranean California" 
-
-dat.mean = read.csv('../data/metrics_by_event_mean.csv')
-
-dat.mean$Name[dat.mean$Name == "Ignore"] = "Mediterranean California" 
-
-
-pal_regions <- 
-  c("Eastern Forests" = "#009E73",
-    "Mediterranean California" = "#F0E442",
-    "Northern Great Plains" = "#0072B2",
-    "Southern Great Plains" = "#E69F00",
-    "Western Deserts" = "#D55E00",
-    "Western Mountains" = "#56B4E9")
-
-########## Number of events 
-dat = dat %>% group_by(gage) %>% count() %>% left_join(dat,.,by="gage")
-
-region.mean  = dat.mean %>% group_by(Name,CLASS)%>%
-  select(Name,CLASS,mean_dry_date_start,mean_drying_rate,mean_peak2zero,mean_dry_dur,n_events) %>%
-  summarise(.,mean.dry.date = mean(mean_dry_date_start),
-            mean.drying.rate = mean(mean_drying_rate),
-            mean.peak2zero = mean(mean_peak2zero),
-            mean.dry_dur = mean(mean_dry_dur),
-            mean.n_events = mean(n_events)
-  )
-
-kmean.mean = clust %>% group_by(kmeans.clust) %>%
-  summarise(.,mean.dry.date = mean(dry_date_start),
-            mean.drying.rate = mean(drying_rate),
-            mean.peak2zero = mean(peak2zero),
-            mean.dry_dur = mean(dry_dur),
-            mean.rel_freq = mean(rel_freq))
-
-drying_rate = ggplot(dat,aes(x=dry_date_start,y = drying_rate))+
-  geom_bin2d(binwidth = c(5, 0.15))+
-  xlab("Dry Start Date (day)")+
-  ylab("Drying Rate\n(1/day)") +
-  scale_fill_viridis(limit=c(0,120))
-# scale_fill_gradientn(trans = 'log',labels=trans_format("identity", function(x) round(x,2)),limits = c(1,300),colors = viridis(10),breaks =c(1,10,50,100,200))
-drying_rate = drying_rate + 
-  geom_point(data=region.mean,aes(x=mean.dry.date,y=mean.drying.rate,group=paste(Name,CLASS),shape = factor(CLASS)),colour="white",size = 5, alpha=.75)
-drying_rate = drying_rate + geom_point(data=region.mean,aes(x=mean.dry.date,y=mean.drying.rate,group=paste(Name,CLASS),color=Name,shape = factor(CLASS)),size = 4, alpha=.25)
-
-drying_rate = drying_rate + 
-  geom_point(data=kmean.mean,aes(x=mean.dry.date,y=mean.drying.rate,color=factor(kmeans.clust)),shape=15,size = 4)+
-  scale_color_manual(values = c(pal_regions,cols))
-
-peak2zero = ggplot(dat,aes(x=dry_date_start,y = peak2zero))+
-  geom_bin2d(binwidth = c(5,5)) +
-  ylim(0,365)+
-  xlab("Dry Start Date (day)")+
-  ylab("Peak2Zero\n(day)") +
-  scale_fill_viridis(limit=c(0,120))
-# scale_fill_gradientn(trans = 'log',labels=trans_format("identity", function(x) round(x,2)),limits = c(1,300),colors = viridis(10),breaks =c(1,10,50,100,200))
-
-peak2zero = peak2zero + 
-  geom_point(data=region.mean,aes(x=mean.dry.date,y=mean.peak2zero,group=paste(Name,CLASS),shape = factor(CLASS)),colour="white",size = 5, alpha=.25)
-peak2zero = peak2zero + geom_point(data=region.mean,aes(x=mean.dry.date,y=mean.peak2zero,group=paste(Name,CLASS),color=Name,shape = factor(CLASS)),size = 4, alpha=.25)+
-  scale_color_manual(values = pal_regions)
-
-peak2zero = peak2zero + 
-  geom_point(data=kmean.mean,aes(x=mean.dry.date,y=mean.peak2zero,color=factor(kmeans.clust)),shape=15,size = 4)+
-  scale_color_manual(values = c(pal_regions,cols))
-
-dry_dur = ggplot(dat,aes(x=dry_date_start,y = dry_dur)) +
-  geom_bin2d(binwidth = c(5,5)) +
-  ylim(0,365) +
-  xlab("Dry Start Date (day)")+
-  ylab("Drying Duration\n(day)") +
-  scale_fill_viridis(limit=c(0,120))
-# scale_fill_gradientn(trans = 'log',labels=trans_format("identity", function(x) round(x,2)),limits = c(1,300),colors = viridis(10),breaks =c(1,10,50,100,200))
-
-dry_dur = dry_dur + 
-  geom_point(data=region.mean,aes(x=mean.dry.date,y=mean.dry_dur,group=paste(Name,CLASS),shape = factor(CLASS)),colour="white",size = 5, alpha=.25)
-
-dry_dur = dry_dur + geom_point(data=region.mean,aes(x=mean.dry.date,y=mean.dry_dur,group=paste(Name,CLASS),color=Name,shape = factor(CLASS)),size = 4, alpha=.25)+
-  scale_color_manual(values = pal_regions)
-
-dry_dur = dry_dur + 
-  geom_point(data=kmean.mean,aes(x=mean.dry.date,y=mean.dry_dur,color=factor(kmeans.clust)),shape=15,size = 4)+
-  scale_color_manual(values = c(pal_regions,cols))
-
-
-n_events = ggplot(dat,aes(x=dry_date_start,y = n)) +
-  geom_bin2d(binwidth = c(5,7)) +
-  # ylim(0,365) +
-  xlab("Dry Start Date (day)")+
-  ylab("Number of Events") +
-  scale_fill_viridis(limit=c(0,120))
-# scale_fill_gradientn(trans = 'log',labels=trans_format("identity", function(x) round(x,2)),limits = c(1,300),colors = viridis(10),breaks =c(1,10,50,100,200))
-
-n_events = n_events + 
-  geom_point(data=region.mean,aes(x=mean.dry.date,y=mean.n_events,group=paste(Name,CLASS),shape = factor(CLASS)),colour="white",size = 5, alpha=.25)
-n_events = n_events+geom_point(data=region.mean,aes(x=mean.dry.date,y=mean.n_events,group=paste(Name,CLASS),color=Name,shape = factor(CLASS)),size = 4, alpha=.25)+
-  scale_color_manual(values = pal_regions)
-
-binned  = drying_rate + peak2zero   + dry_dur + plot_layout(ncol = 3, guides = "collect") & theme(legend.position = 'right') & ggtitle("k-means")
-
-binned
