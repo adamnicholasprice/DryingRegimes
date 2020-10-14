@@ -8,4 +8,6 @@
 *.zip
 *icon*
 data/
+.RData
+.Rhistory
 .Rproj.user
