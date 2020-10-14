@@ -69,7 +69,7 @@ df$gmm.clust = as.factor(df$gmm.clust)
 df$hier.4.clust = as.factor(df$hier.4.clust)
 
 df = df %>% select(gage,Name,CLASS,dec_lat_va,dec_long_va,
-hier.4.clust,gmm.clust,kmeans.clust,dbscan.cluster,
+kmeans,
 peak2zero,drying_rate,p_value.x,dry_dur,rel_freq,peak_quantile,peak_value.x,
 dry_date_start,dry_date_mean.x,peak_date.x,calendar_year.x,season.x,meteorologic_year.x,
 DRAIN_SQKM,SNOW_PCT_PRECIP,GEOL_REEDBUSH_DOM,FRESHW_WITHDRAWAL,PCT_IRRIG_AG,
@@ -89,11 +89,7 @@ df = df[complete.cases(df),]
 
 
 sub = df %>% select(
-                   hier.4.clust,
-                   # gmm.clust,
-                   # kmeans.clust,
-                   # dbscan.cluster,
-                   # peak2zero,drying_rate,p_value.x,dry_dur,rel_freq,peak_quantile,dry_date_start,
+                   kmeans,
                    DRAIN_SQKM,SNOW_PCT_PRECIP,GEOL_REEDBUSH_DOM,FRESHW_WITHDRAWAL,PCT_IRRIG_AG,
                    DEVNLCD06,FORESTNLCD06,PLANTNLCD06,WATERNLCD06,SNOWICENLCD06,IMPNLCD06,ELEV_MEAN_M_BASIN,
                    SLOPE_PCT,AWCAVE,PERMAVE,CLAYAVE,SILTAVE,SANDAVE,TOPWET,
