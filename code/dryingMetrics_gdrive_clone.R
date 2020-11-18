@@ -123,7 +123,7 @@ fun<-function(n){
 #Step 4: Apply function in parrallel -------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Define number of cores available
-n_cores<-detectCores()-1
+n_cores<-2
 
 #Create clusters
 cl <- makeCluster(n_cores)
