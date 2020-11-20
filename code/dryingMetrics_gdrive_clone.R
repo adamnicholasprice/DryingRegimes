@@ -6,8 +6,11 @@
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 #Helpful link
-#https://community.rstudio.com/t/how-to-download-a-google-drives-contents-based-on-drive-id-or-url/16896/12
+#   https://community.rstudio.com/t/how-to-download-a-google-drives-contents-based-on-drive-id-or-url/16896/12
 
+
+#Gdrive of interest
+#   https://drive.google.com/drive/folders/1FMAyCj91wB_tQDr6GfeDnTZHcUAbNnpR
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Step 1: Setup workspace -------------------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -24,22 +27,20 @@ library('parallel')
 #  (https://drive.google.com/drive/folders/[gdrive_id])
 gdrive_id<-'1FMAyCj91wB_tQDr6GfeDnTZHcUAbNnpR'
 
+#Initiate connection with 
+drive_find(n_max = 2)
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Step 2: Clone folder schema----------------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Create data file
 dir.create("data")
 
-#Define google folder of interest 
-#  (https://drive.google.com/drive/folders/[gdrive_id])
-gdrive_id<-'1FMAyCj91wB_tQDr6GfeDnTZHcUAbNnpR'
-
 #Define total number of folders in gdrive
 n_folders<-drive_ls(
    path = as_id(gdrive_id), 
    type='folder', 
    recursive = T) %>% 
-  filter(name!='all') %>% 
   nrow()
 
 #Define google drive folders
@@ -49,7 +50,6 @@ files<-drive_ls(
 
 #Add local folder name
 files<-files %>% 
-  filter(name!='all') %>% 
   mutate(local_name = paste0("data//",name))
 
 #Define counter
@@ -61,9 +61,6 @@ while(n<=n_folders){
   temp<-drive_ls(
     path = as_id(files$id[n]), 
     type= 'folder')
-  
-  #Filter "all" folder
-  temp<-temp %>% filter(name!='all')
   
   #Add local folder name
   temp<-temp %>% 
@@ -84,6 +81,15 @@ while(n<=n_folders){
 
 #Create local copy of folder schema
 lapply(files$local_name, dir.create)
+
+#Add root dir file
+files<-
+  tibble(
+    name = NA,
+    id = gdrive_id, 
+    drive_resource=NA, 
+    local_name = "data") %>% 
+  bind_rows(., files)  
 
 #Cleanup env
 remove(n)
@@ -123,7 +129,7 @@ fun<-function(n){
 #Step 4: Apply function in parrallel -------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Define number of cores available
-n_cores<-2
+n_cores<-3
 
 #Create clusters
 cl <- makeCluster(n_cores)
