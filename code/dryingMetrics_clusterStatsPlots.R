@@ -39,7 +39,16 @@ pal_regions <-
     "Northern Great Plains" = "#0072B2",
     "Southern Great Plains" = "#E69F00",
     "Western Deserts" = "#D55E00",
-    "Western Mountains" = "#56B4E9")
+    "Western Mountains" = "#56B4E9",
+    "1" = "#4477AA",
+    "2" = "#66CCEE",
+    "3" = "#228833",
+    "4" = "#CCBB44",
+    "5" = "#EE6677",
+    "6" = "#AA3377",
+    "7" = "#BBBBBB",
+    "8" = "#999944",
+    "9" = "#332288")
 
 cols <- 
   c("1" = "#4477AA",
@@ -160,28 +169,35 @@ y_pos = sort(c(seq(1.75,4.75,1),seq(1.25,4.25,1)))
 counts = get_counts(df)
 peak2zero = ggplot(data=df,aes(x=log(peak2zero),y=factor(kmeans),group = paste(factor(kmeans),CLASS),linetype=CLASS,fill = factor(kmeans)))+
   geom_density_ridges(scale=2,alpha = .75,panel_scaling = FALSE,rel_min_height=0.01)+ 
-  scale_fill_manual(values = cols)+
-  annotate("text", x = 6, y = y_pos, label = paste0(counts$CLASS,"-",counts$kmeans,' = ',counts$n))
+  scale_fill_manual(values = cols,'Cluster Membership')+
+  annotate("text", x = 6, y = y_pos, label = paste0(counts$CLASS,"-",counts$kmeans,' = ',counts$n))+
+  ylab("Peak2Zero\n(log(days)")+
+  ylab("Cluster Membership")
 
 drying_rate = ggplot(data=df,aes(x=drying_rate,y=factor(kmeans),group = paste(factor(kmeans),CLASS),linetype=CLASS,fill = factor(kmeans)))+
   geom_density_ridges(scale=2,alpha = .75,panel_scaling = FALSE,rel_min_height=0.01)+ 
-  scale_fill_manual(values = cols)
+  scale_fill_manual(values = cols,'Cluster Membership')+
+  xlab("Drying Rate\n(1/days)")+ylab(NULL)
 
 dry_date_start = ggplot(data=df,aes(x=dry_date_start,y=factor(kmeans),group = paste(factor(kmeans),CLASS),linetype=CLASS,fill = factor(kmeans)))+
   geom_density_ridges(scale=2,alpha = .75,panel_scaling = FALSE,rel_min_height=0.01)+ 
-  scale_fill_manual(values = cols)
+  scale_fill_manual(values = cols,'Cluster Membership')+
+  xlab("Dry Date Start\n(DOY)")+ylab(NULL)
 
 dry_dur = ggplot(data=df,aes(x=log(dry_dur),y=factor(kmeans),group = paste(factor(kmeans),CLASS),linetype=CLASS,fill = factor(kmeans)))+
   geom_density_ridges(scale=2,alpha = .75,panel_scaling = FALSE,rel_min_height=0.01)+ 
-  scale_fill_manual(values = cols)
+  scale_fill_manual(values = cols,'Cluster Membership')+
+  xlab("Drying Duration\n(log(days)")+ylab(NULL)
 
 peakQ = ggplot(data=df,aes(x=peak_quantile,y=factor(kmeans),group = paste(factor(kmeans),CLASS),linetype=CLASS,fill = factor(kmeans)))+
   geom_density_ridges(scale=2,alpha = .75,panel_scaling = FALSE,rel_min_height=0.01)+ 
-  scale_fill_manual(values = cols)
+  scale_fill_manual(values = cols,'Cluster Membership')+
+  xlab("Peak Quantile")+ylab(NULL)
 
 ann_freq = ggplot(data=df,aes(x=freq_local,y=factor(kmeans),group = paste(factor(kmeans),CLASS),linetype=CLASS,fill = factor(kmeans)))+
   geom_density_ridges(scale=2,alpha = .75,panel_scaling = FALSE,rel_min_height=0.01)+ 
-  scale_fill_manual(values = cols)
+  scale_fill_manual(values = cols,'Cluster Membership')+
+  xlab("Annual Frequency")+ylab(NULL)
 
 p = peak2zero  + drying_rate + dry_date_start + dry_dur + peakQ + ann_freq + plot_layout(ncol = 6, guides = "collect") & theme(legend.position = 'right') 
 
@@ -286,28 +302,50 @@ kmeans.stacked
 
 
 
-region.mean  = dat.mean %>% group_by(Name,CLASS)%>%
-  select(Name,CLASS,mean_dry_date_start,mean_drying_rate,mean_peak2zero,mean_dry_dur,n_events) %>%
-  summarise(.,mean.dry.date = mean(mean_dry_date_start),
-            mean.drying.rate = mean(mean_drying_rate),
-            mean.peak2zero = mean(mean_peak2zero),
-            mean.dry_dur = mean(mean_dry_dur),
-            mean.n_events = mean(n_events)
+region.mean  = df %>% group_by(Name,CLASS)%>%
+  select(Name,CLASS,dry_date_start,drying_rate,peak2zero,dry_dur,peak_quantile,freq_local) %>%
+  summarise(.,median.dry.date = median(dry_date_start),
+            median.drying.rate = median(drying_rate),
+            median.peak2zero = median(peak2zero),
+            median.dry_dur = median(dry_dur),
+            median.peak_quantile = median(peak_quantile),
+            median.freq_local = median(freq_local)
   )
 
 
-drying_rate = ggplot(dat,aes(x=dry_date_start,y = drying_rate))+
+cluster.median = df %>% group_by(kmeans,CLASS) %>%
+  select(kmeans,CLASS,dry_date_start,drying_rate,peak2zero,dry_dur,peak_quantile,freq_local) %>%
+  summarise(.,median.dry.date = median(dry_date_start),
+            median.drying.rate = median(drying_rate),
+            median.peak2zero = median(peak2zero),
+            median.dry_dur = median(dry_dur),
+            median.peak_quantile = median(peak_quantile),
+            median.freq_local = median(freq_local)
+  )
+
+
+drying_rate = ggplot(df,aes(x=dry_date_start,y = drying_rate))+
   geom_bin2d(binwidth = c(5, 0.15))+
   xlab("Dry Start Date (day)")+
   ylab("Drying Rate\n(1/day)") +
   scale_fill_viridis(limit=c(0,120))
 # scale_fill_gradientn(trans = 'log',labels=trans_format("identity", function(x) round(x,2)),limits = c(1,300),colors = viridis(10),breaks =c(1,10,50,100,200))
+
+#### Add Ecoregion medians
 drying_rate = drying_rate + 
-  geom_point(data=region.mean,aes(x=mean.dry.date,y=mean.drying.rate,group=paste(Name,CLASS),shape = factor(CLASS)),colour="white",size = 5, alpha=.75)
-
-
-drying_rate = drying_rate + geom_point(data=region.mean,aes(x=mean.dry.date,y=mean.drying.rate,group=paste(Name,CLASS),color=Name,shape = factor(CLASS)),size = 4, alpha=.75)+
+  geom_point(data=region.mean,aes(x=median.dry.date,y=median.drying.rate,group=paste(Name,CLASS),shape = factor(CLASS)),colour="white",size = 5, alpha=.75)
+drying_rate = drying_rate + geom_point(data=region.mean,aes(x=median.dry.date,y=median.drying.rate,group=paste(Name,CLASS),color=Name,shape = factor(CLASS)),size = 4, alpha=.75)+
   scale_color_manual(values = pal_regions)
+
+
+#### Add cluster medians
+drying_rate = drying_rate + 
+  geom_point(data=cluster.median,aes(x=median.dry.date,y=median.drying.rate,group=paste(kmeans,CLASS),shape = factor(CLASS)),colour="white",size = 5, alpha=.75)
+drying_rate = drying_rate + 
+  geom_point(data=cluster.median,aes(x=median.dry.date,y=median.drying.rate,group=paste(kmeans,CLASS),
+                                                               color=factor(kmeans),shape = factor(CLASS)),size = 4, alpha=.75)
+
+
 
 peak2zero = ggplot(dat,aes(x=dry_date_start,y = peak2zero))+
   geom_bin2d(binwidth = c(5,5)) +

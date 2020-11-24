@@ -42,7 +42,7 @@ library(h2o)
 
 ####### Load and Filter Data #########
 
-clust = read.csv('../data/clustering_results_allevents.csv')
+clust = read.csv('../data/kmeans.csv')
 clust$gage = as.numeric(clust$gage)
 
 dat = read.csv("../data/metrics_by_event_combined.csv")
@@ -63,14 +63,11 @@ df = cbind(df,clust)
 
 df = df %>% subset(., select=which(!duplicated(names(.))))
 
-df$hier.4.clust = as.factor(df$hier.4.clust)
-df$kmeans.clust = as.factor(df$kmeans.clust)
-df$gmm.clust = as.factor(df$gmm.clust)
-df$hier.4.clust = as.factor(df$hier.4.clust)
+df$kmeans = as.factor(df$kmeans)
 
 df = df %>% select(gage,Name,CLASS,dec_lat_va,dec_long_va,
 kmeans,
-peak2zero,drying_rate,p_value.x,dry_dur,rel_freq,peak_quantile,peak_value.x,
+peak2zero,drying_rate,p_value.x,dry_dur,freq_local,peak_quantile,peak_value.x,
 dry_date_start,dry_date_mean.x,peak_date.x,calendar_year.x,season.x,meteorologic_year.x,
 DRAIN_SQKM,SNOW_PCT_PRECIP,GEOL_REEDBUSH_DOM,FRESHW_WITHDRAWAL,PCT_IRRIG_AG,
 DEVNLCD06,FORESTNLCD06,PLANTNLCD06,WATERNLCD06,SNOWICENLCD06,IMPNLCD06,ELEV_MEAN_M_BASIN,
@@ -111,7 +108,7 @@ rm(ant.cond,clust,dat)
 
 #####################################################################################
 #####################################################################################
-############################# Hier Cluster #################################
+############################# Cluster Membership ####################################
 #####################################################################################
 #####################################################################################
 
@@ -129,7 +126,7 @@ print(i)
 set.seed(seed[i])
 print(seed[i])
 sub$index <- seq(1:nrow(sub))
-training_size = nrow(sub)*0.7
+training_size = round(nrow(sub)*0.7,0)
 training <- as.data.frame(sub[sample(1:nrow(sub),training_size, replace = F),])
 testing <- as.data.frame(sub[!sub$index %in% training$index,])
   
@@ -139,7 +136,7 @@ training$index = NULL
 
 
 # create feature names
-y <- "hier.4.clust"
+y <- "kmeans"
 x <- setdiff(names(training), y)
 
 # Initialize an h2o cluster
@@ -189,16 +186,16 @@ print(grid_perf2)
 
 # Hyper-Parameter Search Summary: ordered by increasing mse
 # max_depth mtries ntrees sample_rate         model_ids                 mse
-# 1         30     40    500         0.8  rf_grid2_model_2 0.30797846869895606
-# 2         40     40    500         0.8  rf_grid2_model_4 0.30809128817199155
-# 3         40     50    300         0.8 rf_grid2_model_19  0.3086719215338706
-# 4         20     30    500         0.8 rf_grid2_model_17 0.30972088830583067
-# 5         25     40    200        0.75  rf_grid2_model_9  0.3100404356691361
+# 1        25     50    500         0.8 rf_grid2_model_20  0.2673979466566936
+# 2        30     50    400         0.8  rf_grid2_model_1 0.26768299086406583
+# 3        35     40    400         0.8 rf_grid2_model_17 0.26784846343682456
+# 4        35     30    200        0.75  rf_grid2_model_9  0.2693844969034114
+# 5        25     30    500       0.632 rf_grid2_model_22  0.2696208249940258
 
 best_model_id <- grid_perf2@model_ids[[1]]
 best_model <- h2o.getModel(best_model_id)
 
-
+####################### Random Forest ####################################
 
 
 test.h2o <- as.h2o(testing)
@@ -219,7 +216,7 @@ h2o.varimp_plot(cars_drf)
 h2o.shutdown(prompt = TRUE)
 
 
-rf = ranger(formula = hier.4.clust ~.,
+rf = ranger(formula = kmeans ~.,
             data = training,
             num.trees = 500,
             mtry = 40,

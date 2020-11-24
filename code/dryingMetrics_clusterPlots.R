@@ -97,15 +97,14 @@ k.means = df %>% select(gage,dec_lat_va,dec_long_va,CLASS,Name) %>% left_join(k.
 states <- map_data("state")
 
 kmean_CLUST <- ggplot(data = states) + 
-  geom_polygon(aes(x = long, y = lat, group = group), fill = "gray", color = "black") + 
+  geom_polygon(aes(x = long, y = lat, group = group), fill = "lightgray", color = "black") + 
   coord_fixed(1.3, xlim = c(-124.25,-70), ylim = c(26,48.5)) +
   theme_linedraw() + 
   # geom_point(data=k.means, aes(x=dec_long_va, y=dec_lat_va, shape = factor(CLASS),size = proportion),alpha=1)+
-  geom_point(data=k.means, aes(x=dec_long_va, y=dec_lat_va, shape = factor(CLASS),colour = factor(mode), size = 1/proportion),alpha=.7)+
+  geom_point(data=k.means, aes(x=dec_long_va, y=dec_lat_va, shape = factor(CLASS),colour = factor(mode), size = proportion),alpha=.8)+
   scale_color_manual(name = "Cluster Membership Mode",values = cols)+
-  # scale_radius(trans='sqrt',breaks = c(.2,.4,.6,.8,1),labels = c(5,4,3,2,1),name = "Number of Cluster Changes") +
-  scale_shape(name="Gage Type")+
-  ggtitle("k-means")
+  scale_radius(trans='sqrt',breaks = c(.2,.4,.6,.8,1),name = "Mode Proportion") +
+  scale_shape(name="Gage Type")
 
 kmean_CLUST
 
@@ -129,20 +128,28 @@ colnames(prop)  = c("gage",'cluster','total_events','event_count','proportion')
 k.means = df %>% select(gage,dec_lat_va,dec_long_va,CLASS,Name) %>% left_join(prop,.,by="gage") %>% unique()
 
 kmean_CLUST <- ggplot(data = states) + 
-  geom_polygon(aes(x = long, y = lat, group = group), fill = "gray", color = "black") + 
+  geom_polygon(aes(x = long, y = lat, group = group), fill = "lightgray", color = "black") + 
   coord_fixed(1.3, xlim = c(-124.25,-70), ylim = c(26,48.5)) +
-  theme_linedraw() + 
-  geom_point(data=k.means, aes(x=dec_long_va, y=dec_lat_va, shape = factor(CLASS),size = proportion+0.01),alpha=.25)+
-  scale_radius(trans = 'sqrt',limits = c(.1,.5),name = "Proportion of Events in Cluster")+
-  facet_wrap(~cluster)
+  theme_linedraw()
+  # geom_point(data=k.means, aes(x=dec_long_va, y=dec_lat_va, shape = factor(CLASS),size = proportion+0.01),alpha=.25)+
+  # scale_radius(trans = 'sqrt',limits = c(.1,.5),name = "Proportion of Events in Cluster")+
+  # facet_wrap(~cluster)
 
+counts = df %>% group_by(kmeans) %>% count()
 
-kmean_CLUST +   geom_point(data=k.means, aes(x=dec_long_va, y=dec_lat_va, shape = factor(CLASS),colour = factor(cluster), size = proportion),alpha=.7)+
+labs = c("1" = paste0("Cluster 1\nn=",counts$n[1]),
+         "2" = paste0("Cluster 2\nn=",counts$n[2]),
+         "3" = paste0("Cluster 3\nn=",counts$n[3]),
+         "4" = paste0("Cluster 4\nn=",counts$n[4]))
+
+kmean_CLUST +   geom_point(data=k.means, aes(x=dec_long_va, y=dec_lat_va, shape = factor(CLASS),colour = factor(cluster), size = proportion),alpha=.6)+
   scale_color_manual(values = cols)+
   # scale_radius(trans='sqrt',breaks = c(.2,.4,.6,.8,1),labels = c(5,4,3,2,1),name = "Number of Cluster Changes") +
-  scale_radius(trans = 'sqrt',limits = c(.1,.5),name = "Proportion of Events in Cluster")+
+  scale_radius(trans = 'sqrt',breaks = c(0,.2,.4,.6,.8,1),name = "Proportion of Events in Cluster")+
   scale_shape(name="Gage Type")+
-  ggtitle("k-means")+
-  facet_wrap(~cluster)
+  facet_wrap(~cluster,labeller = labeller(cluster = labs))+
+  theme_void()
+
+
 
 
