@@ -151,16 +151,16 @@ cols <-
     "11147500" = "#000000")
 
 cluster.labels <-
-  c('Cluster 1',
-    'Cluster 2',
-    'Cluster 3',
-    'Cluster 4',
-    "Drying Event Average")
+  c("08072730" = 'Cluster 1',
+    "11085000" = 'Cluster 2',
+    "02304500" = 'Cluster 3',
+    "05595730" = 'Cluster 4',
+    "11147500" = "Drying Event Average")
 
 
 hydro = ggplot(all,aes(x=peak_day,y=round(q,0),color = gage)) +
   geom_line(size=1,alpha=.9)+
-  scale_color_manual(name = "Cluster Membership",values = cols,labels = cluster.labels)+
+  scale_color_manual(name = "Cluster Membership",values = cols,labels=cluster.labels)+
   xlim(150,225)+
   xlab("Median Peak Date (DOY)")+
   ylab('Discharge (cfs)')
@@ -180,7 +180,7 @@ kmean_CLUST <- ggplot(data = states) +
   geom_polygon(aes(x = long, y = lat, group = group), fill = "lightgray", color = "black") + 
   coord_fixed(1.3, xlim = c(-124.25,-70), ylim = c(26,48.5)) +
   theme_linedraw() + 
-  geom_point(data=c.med, aes(x=dec_long_va, y=dec_lat_va, shape = factor(CLASS),colour = factor(kmeans)),size = 4,alpha=.8)+
+  geom_point(data=c.med, aes(x=dec_long_va, y=dec_lat_va, shape = factor(CLASS),color = factor(kmeans)),size = 4,alpha=.8)+
   scale_color_manual(name = "Cluster Membership",values = c.cols, labels = cluster.labels)+
   scale_shape(name="Gage Type")
 
