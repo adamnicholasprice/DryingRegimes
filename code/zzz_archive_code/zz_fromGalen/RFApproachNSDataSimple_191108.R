@@ -129,7 +129,7 @@ training$NO3.Amt.Rmv.rf <- predict(rf, training)
 #rmse
 rmse.test.rf <- round(rmse(testing$NO3.Amt.Rmv, testing$NO3.Amt.Rmv.rf), digits = 2)
 rmse.train.rf <- round(rmse(training$NO3.Amt.Rmv, training$NO3.Amt.Rmv.rf), digits = 2)
-rmse.oob.rf <- round(rmse(rf$predicted, training$NO3.Amt.Rmv), digits = 2)
+rmse.oob.rf <- round(rmse(rf$predicted, training$NO3.Amt.Rmv), digits = 2)rf
 #rsquared
 lm.test <- lm(testing$NO3.Amt.Rmv.rf~testing$NO3.Amt.Rmv) %>% summary()
 lm.test.r2 <- lm.test$r.squared

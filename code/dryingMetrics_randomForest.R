@@ -42,15 +42,15 @@ library(h2o)
 
 ####### Load and Filter Data #########
 
-clust = read.csv('../data/kmeans.csv')
+clust = read.csv('data/kmeans.csv')
 clust$gage = as.numeric(clust$gage)
 
-dat = read.csv("../data/metrics_by_event_combined.csv")
+dat = read.csv("data/metrics_by_event_combined.csv")
 dat$gage = as.numeric(dat$gage)
 dat$Name[dat$Name == "Ignore"] = "Mediterranean California" 
 dat = dat[dat$peak_quantile>.25 & dat$drying_rate>=0,]
 
-ant.cond = read.csv("../data/metrics_by_event_withAntCondNoFlow.csv")
+ant.cond = read.csv("data/metrics_by_event_withAntCondNoFlow.csv")
 ant.cond = ant.cond[ant.cond$peak_quantile>.25 & ant.cond$drying_rate>=0,]
 ant.cond$Date = as.Date(ant.cond$Date)
 
@@ -91,7 +91,8 @@ sub = df %>% select(
                    DEVNLCD06,FORESTNLCD06,PLANTNLCD06,WATERNLCD06,SNOWICENLCD06,IMPNLCD06,ELEV_MEAN_M_BASIN,
                    SLOPE_PCT,AWCAVE,PERMAVE,CLAYAVE,SILTAVE,SANDAVE,TOPWET,
                    depth_bedrock_m,porosity,storage_m,
-                   P_mm,PET_mm,Tmin_C,Tmax_C,Srad_wm2,SWE_mm,melt_mm,P_7,PET_7,Tmax_7,Tmin_7,melt_7,
+                   P_mm,PET_mm,Tmin_C,Tmax_C,Srad_wm2,SWE_mm,melt_mm,
+                   P_7,PET_7,Tmax_7,Tmin_7,melt_7,
                    P_14,PET_14,Tmax_14,Tmin_14,melt_14,
                    P_30,PET_30,Tmax_30,Tmin_30,melt_30,
                    P_60,PET_60,Tmax_60,Tmin_60,melt_60,
@@ -100,9 +101,79 @@ sub = df %>% select(
                    API_7,API_14,API_40,API_60,API_90,API_180,APETI_7,APETI_14,APETI_40,
                    APETI_60,APETI_90,APETI_180,AMELTI_7,AMELTI_14,AMELTI_40,AMELTI_60,AMELTI_90,AMELTI_180)
 
+sub = sub %>%  select(
+  kmeans,
+  DRAIN_SQKM,SNOW_PCT_PRECIP,GEOL_REEDBUSH_DOM,FRESHW_WITHDRAWAL,PCT_IRRIG_AG,
+  DEVNLCD06,FORESTNLCD06,PLANTNLCD06,WATERNLCD06,SNOWICENLCD06,IMPNLCD06,ELEV_MEAN_M_BASIN,
+  SLOPE_PCT,AWCAVE,PERMAVE,CLAYAVE,SILTAVE,SANDAVE,TOPWET,
+  depth_bedrock_m,porosity,storage_m,
+  P_mm,PET_mm,Srad_wm2,SWE_mm,melt_mm,
+  API_7, AMELTI_7
+  # Tmax_C,Tmin_C
+  # P_7,PET_7,Tmax_7,Tmin_7,melt_7,
+  # P_14,PET_14,Tmax_14,Tmin_14,melt_14,
+  # P_30,PET_30,Tmax_30,Tmin_30,melt_30,
+  # P_60,PET_60,Tmax_60,Tmin_60,melt_60,
+  # P_90,PET_90,Tmax_90,Tmin_90,melt_90,
+  # P_180,PET_180,Tmax_180,Tmin_180,melt_180,
+  # API_7,API_14,API_40,API_60,API_90,API_180,APETI_7,APETI_14,APETI_40,
+  # APETI_60,APETI_90,APETI_180,AMELTI_7,AMELTI_14,AMELTI_40,AMELTI_60,AMELTI_90,AMELTI_180
+  )%>%
+  mutate(P.PET = P_mm/PET_mm,
+               # P.PET7 = P_7/PET_7,
+               # P.PET14 = P_14/PET_14,
+               # P.PET30 = P_30/PET_30,
+               # P.PET60 = P_60/PET_60,
+               # P.PET90 = P_90/PET_90,
+               # P.PET180 = P_180/PET_180
+               )
+
+### Fix devide by 0
+
+sub[is.na(sub$P.PET),'P.PET']=0
+# sub[is.na(sub$P.PET7),'P.PET7']=0
+
+sub = sub %>% filter_all(all_vars(!is.infinite(.)))
 
 #### Clean up data
 rm(ant.cond,clust,dat)
+
+###### Check out correlation structure of data#####
+# Source: https://stats.stackexchange.com/questions/141619/wont-highly-correlated-variables-in-random-forest-distort-accuracy-and-feature
+# https://stats.stackexchange.com/questions/168622/why-is-multicollinearity-not-checked-in-modern-statistics-machine-learning
+#
+###################################################
+tt = cor(sub[,c(-1,-4,-79)])
+tt = cor(sub[,c(-1,-4)])
+corrplot::corrplot(tt,order='hclust',type = "upper")
+
+############# Binary classification by cluster ###############
+
+c1 = sub %>%
+  mutate(kmeans = recode(kmeans,
+                          '2'='0',
+                          '3'='0',
+                          '4'='0'))
+
+c2 = sub %>%
+  mutate(kmeans = recode(kmeans,
+                         '1'='0',
+                         '2' = '1',
+                         '3'='0',
+                         '4'='0'))
+c3 = sub %>%
+  mutate(kmeans = recode(kmeans,
+                         '1'='0',
+                         '2'='0',
+                         '3' ='1',
+                         '4'='0'))
+c4 = sub %>%
+  mutate(kmeans = recode(kmeans,
+                         '1'='0',
+                         '2'='0',
+                         '3'='0',
+                         '4'='1'))
+
 
 ################# Random forest ###############
 
@@ -111,12 +182,12 @@ rm(ant.cond,clust,dat)
 ############################# Cluster Membership ####################################
 #####################################################################################
 #####################################################################################
+# fresh = sub
 
+
+sub = c4
+set.seed(42)
 seed = sample(1:10000,100)
-
-# # Setup cluster
-# cl <- parallel::makeCluster(3)
-# doParallel::registerDoParallel(cl)
 
 # Set seed and select training data
 
@@ -130,6 +201,7 @@ training_size = round(nrow(sub)*0.7,0)
 training <- as.data.frame(sub[sample(1:nrow(sub),training_size, replace = F),])
 testing <- as.data.frame(sub[!sub$index %in% training$index,])
   
+sub$index= NULL
 testing$index = NULL
 training$index = NULL
 
@@ -140,7 +212,7 @@ y <- "kmeans"
 x <- setdiff(names(training), y)
 
 # Initialize an h2o cluster
-h2o.init(max_mem_size = "5g")
+h2o.init(max_mem_size = "8g")
 
 
 # turn training set into h2o object
@@ -149,17 +221,17 @@ train.h2o <- as.h2o(training)
 # Setup your hyperparameter grid  
 hyper_grid.h2o <- list(
   ntrees      = seq(100, 500, by = 100),
-  mtries      = seq(10, 50, by = 10),
+  mtries      = seq(10, 30, by = 10),
   max_depth   = seq(10, 40, by = 5),
   # min_rows    = seq(1, 5, by = 2),
   # nbins       = seq(10, 30, by = 5),
-  sample_rate = c(.25,.55, .632, .75, .80)
+  sample_rate = c(.5, .75, .80)
 )
 
 # random grid search criteria
 search_criteria <- list(
   strategy = "RandomDiscrete",
-  stopping_metric = "mse",
+  stopping_metric = "logloss",
   stopping_tolerance = 0.005,
   stopping_rounds = 10,
   max_runtime_secs = 30*60
@@ -179,58 +251,131 @@ random_grid <- h2o.grid(
 # collect the results and sort by our model performance metric of choice
 grid_perf2 <- h2o.getGrid(
   grid_id = "rf_grid2",
-  sort_by = "mse",
-  decreasing = FALSE
+  sort_by = "logloss",
+  decreasing = F
 )
 print(grid_perf2)
 
-# Hyper-Parameter Search Summary: ordered by increasing mse
-# max_depth mtries ntrees sample_rate         model_ids                 mse
-# 1        25     50    500         0.8 rf_grid2_model_20  0.2673979466566936
-# 2        30     50    400         0.8  rf_grid2_model_1 0.26768299086406583
-# 3        35     40    400         0.8 rf_grid2_model_17 0.26784846343682456
-# 4        35     30    200        0.75  rf_grid2_model_9  0.2693844969034114
-# 5        25     30    500       0.632 rf_grid2_model_22  0.2696208249940258
-
 best_model_id <- grid_perf2@model_ids[[1]]
 best_model <- h2o.getModel(best_model_id)
+
+h2o.saveModel(best_model,'data/rf_model/')
 
 ####################### Random Forest ####################################
 
 
 test.h2o <- as.h2o(testing)
-best_model_perf <- h2o.performance(model = best_model, newdata = test.h2o)
+best_model_perf <- h2o.performance(model = bm, newdata = test.h2o)
 
 # RMSE of best model
 h2o.mse(best_model_perf) %>% sqrt()
 
+# Var Imp Plot
+h2o.varimp_plot(best_model)
 
-## Random Forest
-cars_drf <- h2o.randomForest(x = x, y = y,
-                             training_frame = train.h2o, nfolds = 5,
-                             seed = 1234)
-h2o.varimp_plot(cars_drf)
-
-
-
+# 
+# 
 h2o.shutdown(prompt = TRUE)
+# 
+# 
 
+# sub= c4
+# 
+# set.seed(42)
+# seed = sample(1:10000,100)
 
+# Set seed and select training data
+
+# i=10
+# print(i)
+# # Set seed and split data
+# set.seed(seed[i])
+# print(seed[i])
+# sub$index <- seq(1:nrow(sub))
+# training_size = round(nrow(sub)*0.7,0)
+# training <- as.data.frame(sub[sample(1:nrow(sub),training_size, replace = F),])
+# testing <- as.data.frame(sub[!sub$index %in% training$index,])
+# 
+# testing$index = NULL
+# training$index = NULL
+# 
 rf = ranger(formula = kmeans ~.,
             data = training,
-            num.trees = 500,
-            mtry = 40,
+            num.trees = 400,
+            mtry = 20,
             sample.fraction = .8,
-            importance = 'impurity')
+            importance = 'impurity',
+            num.threads = 7,
+            oob.error = T)
 
-ggplot(rf$variable.importance, aes(x=reorder(variable,importance), y=importance,fill=importance))+ 
-  geom_bar(stat="identity", position="dodge")+ coord_flip()+
-  ylab("Variable Importance")+
-  xlab("")+
-  ggtitle("Information Value Summary")+
-  guides(fill=F)+
-  scale_fill_gradient(low="red", high="blue")
+# ggplot(rf$variable.importance, aes(x=reorder(variable,importance), y=importance,fill=importance))+ 
+#   geom_bar(stat="identity", position="dodge")+ coord_flip()+
+#   ylab("Variable Importance")+
+#   xlab("")+
+#   ggtitle("Information Value Summary")+
+#   guides(fill=F)+
+#   scale_fill_gradient(low="red", high="blue")
+
+# rf = randomForest::randomForest(formula = kmeans ~.,
+#              data = training,
+#              mtry = 50,
+#              ntree=500,
+#              importance = T)
+# 
 
 
 
+
+barplot(head(sort(rf$variable.importance,decreasing = T),10),angle = 0)
+
+head(sort(rf$variable.importance,decreasing = T),25)
+head(sort(rf1$variable.importance,decreasing = T),25)
+head(sort(rf2$variable.importance,decreasing = T),25)
+
+library(randomForestExplainer)
+# https://cran.r-project.org/web/packages/randomForestExplainer/vignettes/randomForestExplainer.html
+measure_importance(f_output[[1]]$rf)
+
+
+
+
+
+
+model = bm
+column_name = "Tmax_C"
+data.pdp = train.h2o
+bins = unique(h2o.quantile(train.h2o[, column_name], probs = seq(0.05,1,0.05)) )
+mean_responses = c()
+
+for(bin in bins ){
+  data.pdp[, column_name] = bin
+  response = h2o.predict(model, data.pdp[, column_name])
+  mean_response = mean(response[,ncol(response)])
+  mean_responses = c(mean_responses, mean_response)
+}
+
+pdp_manual = data.frame(Tmax_C = bins, mean_response = mean_responses)
+plot(pdp_manual, type = "l")
+
+h2o.partialPlot(object = bm, data = train.h2o, cols="P_mm")
+
+
+
+########### Load and plot models ############
+h2o.init(max_mem_size = '8G')
+
+am = h2o.loadModel('data/rf_model/all_model')
+h2o.varimp_plot(am)
+
+c1.m = h2o.loadModel('data/rf_model/c1_model')
+h2o.varimp_plot(c1.m)
+
+c2.m = h2o.loadModel('data/rf_model/c2_model')
+h2o.varimp_plot(c2.m)
+
+c3.m = h2o.loadModel('data/rf_model/c3_model')
+h2o.varimp_plot(c3.m)
+
+c4.m = h2o.loadModel('data/rf_model/c4_model')
+h2o.varimp_plot(c4.m,num_of_features = 30)
 

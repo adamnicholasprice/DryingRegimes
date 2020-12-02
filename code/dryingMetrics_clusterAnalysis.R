@@ -14,7 +14,7 @@ library(factoextra)
 #####################################################################
 
 
-df = read.csv('../data/metrics_by_event_combined_raw.csv')
+df = read.csv('data/metrics_by_event_combined_raw.csv')
 
 df$Name[df$Name == "Ignore"] = "Mediterranean California" 
 df = df[df$peak_quantile>.25 & df$drying_rate>0,]
@@ -75,12 +75,19 @@ dat.scale <- df %>%
   #scale vars
   scale()
 
+dat.scale <- df %>% 
+  #Select vars of interest
+  select("peak2zero",
+         "peak_quantile", "freq_local") %>% 
+  #scale vars
+  scale()
+
 #####################################################################
 ######### NbClust ###################################################
 #####################################################################
 
-for (i in 1:2){
-set.seed(i)
+for (i in 1){
+set.seed(10)
 samp = sample(1:nrow(df),1000)
 sub = as.matrix(dat.scale[samp,])
 
@@ -88,15 +95,13 @@ rownames(sub) = df$gage[samp]
 
 
 ideal_ward2 <- NbClust(data = sub, method = "ward.D2")
-factoextra::fviz_nbclust(ideal_ward2) + theme_minimal() + ggtitle("NbClust's optimal number of clusters")
+# factoextra::fviz_nbclust(ideal_ward2) + theme_minimal() + ggtitle("NbClust's optimal number of clusters")
 }
 
 
 #####################################################################
 #################### K-means clustering #############################
 #####################################################################
-
-fviz_nbclust(dat.scale, kmeans, method = "silhouette") + theme_classic()
 
 wcke<-eclust(dat.scale, "kmeans", hc_metric="euclidean",k=4)
 fviz_gap_stat(wcke$gap_stat)
