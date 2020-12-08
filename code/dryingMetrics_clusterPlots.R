@@ -24,7 +24,7 @@ library(rwrfhydro)
 ############################# Code ################################
 
 ########## Load Data #############
-df = read.csv("../data/kmeans.csv")
+df = read.csv("data/kmeans.csv")
 
 
 

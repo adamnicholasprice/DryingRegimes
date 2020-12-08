@@ -117,6 +117,7 @@ for (i in 1:5){
   # dry_date.ind = which(file$Date==c.med$dry_date_filt[i])+(round(c.med$dry_dur[i]+(.5*c.med$dry_dur[i]),0))
   dry_date.ind = which(file$Date==c.med$dry_date_filt[i])+(c.med$dry_dur[i])
   dat = file[peak.ind:dry_date.ind,5]
+  dat[length(dat)] = 5
   length(dat) = 1000
   ind = seq(median.peak[i]-1,(median.peak[i]-1)+999,1)
   out = cbind(out,dat)
@@ -172,23 +173,27 @@ c.cols <-
     "4" = "#CCBB44",
     "5" = "#000000"
     )
-c.med$kmeans[1] = 5
-
-states <- map_data("state")
-
-kmean_CLUST <- ggplot(data = states) + 
-  geom_polygon(aes(x = long, y = lat, group = group), fill = "lightgray", color = "black") + 
-  coord_fixed(1.3, xlim = c(-124.25,-70), ylim = c(26,48.5)) +
-  theme_linedraw() + 
-  geom_point(data=c.med, aes(x=dec_long_va, y=dec_lat_va, shape = factor(CLASS),color = factor(kmeans)),size = 4,alpha=.8)+
-  scale_color_manual(name = "Cluster Membership",values = c.cols, labels = cluster.labels)+
-  scale_shape(name="Gage Type")
 
 
-library(patchwork)
+######## Where the median events are located ########
+# c.med$kmeans[1] = 5
+# 
+# states <- map_data("state")
+# 
+# kmean_CLUST <- ggplot(data = states) + 
+#   geom_polygon(aes(x = long, y = lat, group = group), fill = "lightgray", color = "black") + 
+#   coord_fixed(1.3, xlim = c(-124.25,-70), ylim = c(26,48.5)) +
+#   theme_linedraw() + 
+#   geom_point(data=c.med, aes(x=dec_long_va, y=dec_lat_va, shape = factor(CLASS),color = factor(kmeans)),size = 4,alpha=.8)+
+#   scale_color_manual(name = "Cluster Membership",values = c.cols, labels = cluster.labels)+
+#   scale_shape(name="Gage Type")
 
-hydro / kmean_CLUST
 
+hydro
 
+####### Make a table with stats #############
 
+clust.metrics = clust %>%
+  select(kmeans,peak_date,peak_quantile,peak2zero,drying_rate,dry_date_start,dry_dur,freq_local)
 
+clust.metrics %>% group_by(kmeans) %>% summarise_

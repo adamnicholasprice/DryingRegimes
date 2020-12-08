@@ -28,7 +28,7 @@ library(viridis)
 
 ############################# Code ################################
 
-df = read.csv("../data/kmeans.csv")
+df = read.csv("data/kmeans.csv")
 
 
 
@@ -83,8 +83,8 @@ plot_lay_left <-function(){
       # Change plot and panel background
       plot.background = element_blank(),
       # panel.background = element_blank(),
-      # axis.text.y = element_blank(),
-      axis.title.x = element_blank(),
+      axis.text.y = element_blank(),
+      # axis.title.x = element_blank(),
       axis.ticks.y = element_blank(),
     )
   )
@@ -103,7 +103,7 @@ plot_lay <-function(){
       plot.background = element_blank(),
       # panel.background = element_blank(),
       axis.text.y = element_blank(),
-      axis.title.x = element_blank(),
+      # axis.title.x = element_blank(),
       axis.ticks.y = element_blank(),
     )
   )
@@ -114,38 +114,39 @@ get_season_counts<- function(season,metric){
   season[rows,] %>% group_by(paste(Aggregated_region,Class)) %>% count()
 }
 get_counts <- function(df,metric){
-  counts = df %>% group_by(Name,CLASS) %>% count()
+  counts = df %>% group_by(Name) %>% count()
 }
-y_pos = sort(c(seq(1.75,6.75,1),seq(1.25,6.25,1)))
+# y_pos = sort(c(seq(1.75,6.75,1),seq(1.25,6.25,1)))
+y_pos = seq(1.5,6.5,1)
 
 
 counts = get_counts(df,peak2zero)
-peak2zero = ggplot(data=df, aes(x = log(peak2zero),y=Name,group=paste(Name,CLASS),fill=Name,linetype=CLASS)) + 
+peak2zero = ggplot(data=df, aes(x = log(peak2zero),y=Name,group=Name,fill=Name,linetype=CLASS)) + 
   plot_lay_left() + 
   # xlim(0,200) + 
-  annotate("text", x = 6, y = y_pos, label = paste0(abbreviate(paste(counts$Name,counts$CLASS),2),' = ',counts$n))+
-  ylab("Peak2Zero \n(log(days))") 
+  annotate("text", x = 6, y = y_pos, label = paste0(abbreviate(paste(counts$Name),2),' = ',counts$n))+
+  xlab("Peak2Zero \n(log(days))")
 
-
-drying_rate = ggplot(data=df, aes(x = drying_rate,y=Name,group=paste(Name,CLASS),fill=Name,linetype=CLASS)) + 
+drying_rate = ggplot(data=df, aes(x = drying_rate,y=Name,group=Name,fill=Name,linetype=CLASS)) + 
   plot_lay() +
   xlim(0,4) + 
-  ylab("Drying Rate\n(1/days)")
+  xlab("Drying Rate\n(1/days)")
 
 
-dry_date_start = ggplot(data=df, aes(x = dry_date_start,y=Name,group=paste(Name,CLASS),fill=Name,linetype=CLASS)) + 
-  plot_lay()+ ylab("Dry Start Date\n(days)")
+dry_date_start = ggplot(data=df, aes(x = dry_date_start,y=Name,group=Name,fill=Name,linetype=CLASS)) + 
+  plot_lay()+ xlab("Dry Start Date\n(days)")
 
-dry_dur = ggplot(data=df, aes(x = log(dry_dur),y=Name,group=paste(Name,CLASS),fill=Name,linetype=CLASS)) + 
-  plot_lay() + ylab("No Flow Duration\n(log(days))")
+dry_dur = ggplot(data=df, aes(x = log(dry_dur),y=Name,group=Name,fill=Name,linetype=CLASS)) + 
+  plot_lay() + xlab("No Flow Duration\n(log(days))")
 
-peakQ = ggplot(data=df, aes(x = peak_quantile,y=Name,group=paste(Name,CLASS),fill=Name,linetype=CLASS)) + 
-  plot_lay() + ylab("Peak Quantile")
+peakQ = ggplot(data=df, aes(x = peak_quantile,y=Name,group=Name,fill=Name,linetype=CLASS)) + 
+  plot_lay() + xlab("Peak Quantile")
 
-ann_freq = ggplot(data=df, aes(x = freq_local,y=Name,group=paste(Name,CLASS),fill=Name,linetype=CLASS)) + 
-  plot_lay() + ylab("Relative Frequency")
+ann_freq = ggplot(data=df, aes(x = freq_local,y=Name,group=Name,fill=Name,linetype=CLASS)) + 
+  plot_lay() + xlab("Event Frequency")
 
-all.points  = peak2zero  + drying_rate + dry_date_start + dry_dur + peakQ + ann_freq + plot_layout(ncol = 6, guides = "collect") & theme(legend.position = 'right') 
+all.points  = peak2zero  + drying_rate + dry_date_start + dry_dur + peakQ + ann_freq + plot_layout(ncol = 6, guides = "collect") & 
+  theme(legend.position = 'right', plot.title = element_text(hjust = 0.5))
 
 all.points
 
@@ -235,14 +236,14 @@ dry_date_start = bp(df$dry_date_start)+
 
 dry_dur = bp(df$dry_dur) + 
   ylim(c(0,500))+
-  ylab("Dry Duration\n(Days)")
+  ylab("No Flow Duration\n(Days)")
 
 peakQ = bp(df$peak_quantile)+
   ylab("Peak Quantile")
 
 
 ann_freq = bp(df$freq_local)+
-  ylab("Relative Event Frequency")
+  ylab("Event Frequency")
 
 
 p = peak2zero  + drying_rate + dry_date_start + dry_dur + peakQ + ann_freq + 
