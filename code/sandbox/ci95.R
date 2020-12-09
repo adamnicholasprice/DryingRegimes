@@ -25,7 +25,7 @@ find.event <- function(df,cluster,ci){
   ind = which(rowSums(out)==min(rowSums(out)))
   out = df[df$kmeans==cluster,]
   tt = out[ind,]
-  return(tt)
+  return(out)
 }
 
 out=as.data.frame(NA)
@@ -38,5 +38,11 @@ for (j in 1:4){
     out = cbind(out,t(evt))
   }
 }
+
+out = t(out)
+
+
+
+
 
 

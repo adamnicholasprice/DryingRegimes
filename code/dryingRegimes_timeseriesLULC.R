@@ -68,6 +68,8 @@ lulc_past <-
   dplyr::bind_rows(lulc_hindcast, lulc_historic) %>% 
   tidyr::replace_na(list(lu3 = 0, lu4 = 0, lu5 = 0))
 
+
+
 ## lump to get percent cover in each class (see lulc_key.xlsx)
 # historic and hindcast - sum by area then calculate percentage
 lulc_past$water_area <- lulc_past$lu1 + lulc_past$lu17
@@ -121,7 +123,7 @@ lulc_all <-
   dplyr::rename(lulc_source = Source)
 
 # need to fill in missing years (2006, 2007, 2009, 2010, 2012, 2014, 2015, 2017, 2018)
-df_wuse_yearmatch <- tibble::tibble(currentclimyear = seq(1980, 2018))
+df_wuse_yearmatch <- tibble::tibble(currentclimyear = seq(1979, 2018))
 
 
 for (g in unique(clust$gage)){
@@ -173,10 +175,8 @@ for (g in unique(clust$gage)){
   
 }
 
-gage_sample_annual_NID_wuse_ag_lulc <-
-  dplyr::left_join(gage_sample_annual_NID_wuse_ag, lulc_out, by = c("currentclimyear" = "year", "gage_ID"))
 
-TS_lulc_clust = clust %>% select(gage,meteorologic_year) %>% left_join(.,lulc_out,by = c("meteorologic_year" = "year", "gage"="gage_ID"))
+TS_lulc_clust = clust %>% select(gage,meteorologic_year,event_id) %>% left_join(.,lulc_out,by = c("meteorologic_year" = "year", "gage"="gage_ID"))
 
 
 write_csv(TS_lulc_clust,"data/TS_lulc_clust.csv")

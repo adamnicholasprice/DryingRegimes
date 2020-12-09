@@ -186,6 +186,16 @@ h2o.varimp_plot(bm)
 
 h2o.shutdown(prompt = FALSE)
 
+library(h2o)
+
+h2o.init(max_mem_size = "8g")
+
+am = h2o.loadModel('data/rf_all/rf_grid2_model_37')
+
+
+h2o.varimp_plot(am)
+
+am@model
 
 cluster <- parallel::makeCluster(parallel::detectCores() - 1) # convention to leave 1 core for OS
 registerDoParallel(cluster)
@@ -194,7 +204,7 @@ partial(rf,
         pred.var = c("P_90"), 
         mtry = tune_res$mtry[1], 
         min.node.size = tune_res$min_n[1],
-        num.threads = (parallel::detectCores() - 1),
+        num.threads = 6,
         parallel = T)
   
   
