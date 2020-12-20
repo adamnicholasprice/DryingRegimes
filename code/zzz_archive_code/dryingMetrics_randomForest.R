@@ -256,7 +256,7 @@ h2o.shutdown(prompt = FALSE)
 ########### Load and plot models ############
 h2o.init(max_mem_size = '4G')
 
-am = h2o.loadModel('data/rf_model/all_model')
+am = h2o.loadModel('data/rf_all/rf_grid2_model_14')
 h2o.varimp_plot(am,num_of_features = 30)
 
 c1.m = h2o.loadModel('data/rf_model/c1_model')

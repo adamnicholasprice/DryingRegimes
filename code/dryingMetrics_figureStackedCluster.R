@@ -62,6 +62,24 @@ ts<-lapply(
 ts<-ts %>% bind_rows()
 
 #Tidy
+ts.count<-ts %>% 
+  #Tally events by j_day and kmeans
+  group_by(j_day, kmeans) %>% 
+  summarise(totals=n()) %>% 
+  #Pivot Wider
+  pivot_wider(names_from = kmeans, 
+              values_from=totals, 
+              values_fill=0) %>% 
+  #Tidy a bit
+  filter(j_day!=0) %>% 
+  rename(
+    one=   '1',
+    two=   '2',
+    three= '3',
+    four = '4') %>% 
+  pivot_longer(-j_day)
+
+
 ts<-ts %>% 
   #Tally events by j_day and kmeans
   group_by(j_day, kmeans) %>% 
@@ -99,26 +117,76 @@ ts$name<-factor(ts$name, levels=c('one','two','three','four'))
 ts<-ts %>% 
   mutate(a_day = if_else(j_day>61, j_day-61, j_day+305))
 
+## Spoof the dates to make the plot labels work.....
+ts$j.date = lubridate::as_date(ts.count$j_day)
+
+ts<-ts%>% 
+  mutate(j.date = if_else(j.date<"1970-03-01", j.date+365, j.date+0))
+
+
 #Plot
-ts_plot<-ggplot(ts, aes(x=a_day, y=value, fill=name)) + 
+ts_plot<-ggplot(ts, aes(x=j.date, y=value, fill=name)) + 
   geom_area() +
   scale_fill_manual(
     values=c("#4477AA","#66CCEE","#228833","#CCBB44"), 
-    name = "Cluster") + 
+    name = "Cluster") +
+  scale_x_date(labels = date_format("%B"))+
   theme_bw() + 
   ylab('Proportion of Gages') +
-  xlab('Atmospheric Year Day') +
+  xlab('Month') +
   #Axes Options
   theme(
     axis.title = element_text(size=14),
     axis.text  = element_text(size = 10),
     legend.position = 'none') 
-  # #Legend Options
-  # theme(legend.position = "bottom", 
-  #       legend.title = element_text(size=14), 
-  #       legend.text = element_text(size=10))
 
-#Print 
-jpeg("docs//stackedClusterPlots.jpg", width = 7, height=4, units = "in", res=300)
-ts_plot
+
+ts_plot = ts_plot + 
+  annotate("text", x = as.Date("1970-09-01"), 
+           y = c(0.1,.50,.85,.98), 
+           label = c("Cluster 4","Cluster 3","Cluster 2","Cluster 1"),
+           color = "Black")
+
+
+### Plot Number of events
+
+ts.count$name<-factor(ts.count$name, levels=c('one','two','three','four'))
+
+ts.count<-ts.count %>% 
+  mutate(a_day = if_else(j_day>61, j_day-61, j_day+305))
+
+## Spoof the dates to make the plot labels work.....
+ts.count$j.date = lubridate::as_date(ts.count$j_day)
+
+ts.count<-ts.count %>% 
+  mutate(j.date = if_else(j.date<"1970-03-01", j.date+365, j.date+0))
+
+ts.count.plot = ggplot(ts.count) +
+  geom_line(aes(x=j.date,y=value,color=name))+
+  scale_color_manual(
+    values=c("#4477AA","#66CCEE","#228833","#CCBB44"), 
+    name = "Cluster")+
+  scale_x_date(labels = date_format("%B"))+
+  theme_bw() + 
+  ylab('Number of Events') +
+  xlab('Month') +
+  #Axes Options
+  theme(axis.title = element_text(size=14),
+        axis.text  = element_text(size = 10),
+        legend.position = 'none',
+        axis.text.x = element_blank(),
+        axis.title.x = element_blank())
+
+ts.count.plot = ts.count.plot + annotate("text", x = as.Date("1970-09-01"), 
+              y = c(500,1300,3500,2100), 
+              label = c("Cluster 1","Cluster 2","Cluster 3","Cluster 4"),
+              color = c("#4477AA","#66CCEE","#228833","#CCBB44"))
+
+
+library(patchwork)
+
+out = ts.count.plot / ts_plot 
+
+jpeg("docs//stackedClusterPlots.jpg", width = 10, height=6, units = "in", res=300)
+out
 dev.off()

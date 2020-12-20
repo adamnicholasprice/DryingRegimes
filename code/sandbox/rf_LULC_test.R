@@ -1,3 +1,26 @@
+#####################################################################
+##
+## Script name:
+##
+## Author: Adam N. Price
+##
+## Date Created: 2020-12-13
+##
+## Copyright (c) Adam N. Price, 2020
+## Email: adnprice@ucsc.edu
+##
+############################# Description ##########################
+##
+## 
+##   
+##
+############################# Packages #############################
+##
+## 
+##   
+##
+############################# Code ################################
+
 library(tidyverse)
 library(ranger)
 library(h2o)
@@ -30,8 +53,6 @@ df = df %>% subset(., select=which(!duplicated(names(.))))
 
 df$kmeans = as.factor(df$kmeans)
 
-df = df[!is.na(df$lulc_ag_prc),]
-df = df[!is.na(df$dec_lat_va),]
 
 
 
@@ -41,7 +62,7 @@ sub = df %>%  select(
   DRAIN_SQKM,SNOW_PCT_PRECIP,GEOL_REEDBUSH_DOM,FRESHW_WITHDRAWAL,
   AWCAVE,PERMAVE,CLAYAVE,SILTAVE,SANDAVE,
   TOPWET,ELEV_MEAN_M_BASIN,
-  depth_bedrock_m,porosity,storage_m,
+  porosity,storage_m,
   P_mm,PET_mm,SWE_mm,melt_mm,Tmax_C,
   P_90,PET_90,Tmax_90,melt_90
 )%>%
@@ -57,7 +78,12 @@ sub = sub %>% filter_all(all_vars(!is.infinite(.)))
 sub = sub[complete.cases(sub),]
 
 #### Clean up data
-# rm(ant.cond,clust,dat,lulc,df)
+rm(ant.cond,clust,dat,lulc,df)
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Step #: Subset data by clusters -------------------------------------------
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
 c1 = sub %>%
@@ -88,6 +114,45 @@ c4 = sub %>%
 
 
 
+# # Set seed and split data
+# set.seed(42)
+# sub$index <- seq(1:nrow(sub))
+# training_size = round(nrow(sub)*0.7,0)
+# training <- as.data.frame(sub[sample(1:nrow(sub),training_size, replace = F),])
+# testing <- as.data.frame(sub[!sub$index %in% training$index,])
+# 
+# testing$index = NULL
+# training$index = NULL
+# sub$index = NULL
+# 
+# rf = ranger(formula = kmeans ~.,
+#             data = training,
+#             num.trees = 400,
+#             mtry = 10,
+#             max.depth = 10,
+#             sample.fraction = .8,
+#             importance = 'impurity',
+#             num.threads = 7,
+#             oob.error = T,
+#             classification = T)
+# 
+# 
+# head(sort(rf$variable.importance,decreasing = T),25)
+# 
+# vip::vip(rf)
+# 
+# pred_wrapper <- function(object, newdata) {
+#   p <- predict(object, data = newdata)$predictions[, 1L, drop = TRUE]
+#   c("avg" = mean(p), "avg-1sd" = mean(p) - sd(p), "avg+1sd" = mean(p) + sd(p))
+# }
+# 
+# 
+# pd1 <- pdp::partial(rf, pred.var = "P_90", pred.fun = pred_wrapper)
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Step #: Run Grid Search for RF -------------------------------------------
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Set seed and split data
 set.seed(42)
 sub$index <- seq(1:nrow(sub))
@@ -99,38 +164,13 @@ testing$index = NULL
 training$index = NULL
 sub$index = NULL
 
-rf = ranger(formula = kmeans ~.,
-            data = training,
-            num.trees = 400,
-            mtry = 10,
-            max.depth = 10,
-            sample.fraction = .8,
-            importance = 'impurity',
-            num.threads = 7,
-            oob.error = T,
-            classification = T)
-
-
-head(sort(rf$variable.importance,decreasing = T),25)
-
-vip::vip(rf)
-
-pred_wrapper <- function(object, newdata) {
-  p <- predict(object, data = newdata)$predictions[, 1L, drop = TRUE]
-  c("avg" = mean(p), "avg-1sd" = mean(p) - sd(p), "avg+1sd" = mean(p) + sd(p))
-}
-
-
-pd1 <- pdp::partial(rf, pred.var = "P_90", pred.fun = pred_wrapper)
-
-
 
 # create feature names
 y <- "kmeans"
 x <- setdiff(names(training), y)
 
 # Initialize an h2o cluster
-h2o.init(max_mem_size = "8g")
+h2o.init(max_mem_size = "12g")
 
 
 # turn training set into h2o object
@@ -152,7 +192,7 @@ search_criteria <- list(
   stopping_metric = "logloss",
   stopping_tolerance = 0.05,
   stopping_rounds = 10,
-  max_runtime_secs = 30*60
+  max_runtime_secs = 5*60
 )
 
 # build grid search 

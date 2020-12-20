@@ -18,7 +18,6 @@
 
 library(tidyverse)
 library(ggplot2)
-library(Rfast)
 library(lubridate)
 
 ############################# Code ################################
@@ -164,15 +163,15 @@ hydro = ggplot(all,aes(x=peak_day,y=round(q,0),color = gage)) +
   scale_color_manual(name = "Cluster Membership",values = cols,labels=cluster.labels)+
   xlim(150,225)+
   xlab("Median Peak Date (DOY)")+
-  ylab('Discharge (cfs)')
+  ylab('Discharge (cfs)')+
+  theme_light()
 
-c.cols <- 
-  c("1" = "#4477AA",
-    "2" = "#66CCEE",
-    "3" = "#228833",
-    "4" = "#CCBB44",
-    "5" = "#000000"
-    )
+hydro
+
+
+
+
+
 
 
 ######## Where the median events are located ########
@@ -187,13 +186,9 @@ c.cols <-
 #   geom_point(data=c.med, aes(x=dec_long_va, y=dec_lat_va, shape = factor(CLASS),color = factor(kmeans)),size = 4,alpha=.8)+
 #   scale_color_manual(name = "Cluster Membership",values = c.cols, labels = cluster.labels)+
 #   scale_shape(name="Gage Type")
-
-
-hydro
-
 ####### Make a table with stats #############
-
-clust.metrics = clust %>%
-  select(kmeans,peak_date,peak_quantile,peak2zero,drying_rate,dry_date_start,dry_dur,freq_local)
-
-clust.metrics %>% group_by(kmeans) %>% summarise_
+# 
+# clust.metrics = clust %>%
+#   select(kmeans,peak_date,peak_quantile,peak2zero,drying_rate,dry_date_start,dry_dur,freq_local)
+# 
+# clust.metrics %>% group_by(kmeans) %>% summarise_
