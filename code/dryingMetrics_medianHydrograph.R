@@ -103,7 +103,7 @@ c.med = transform(c.med, peak_date_filt = as.Date(paste0(calendar_year, "-1-1"))
 c.med = transform(c.med, dry_date_filt = as.Date(paste0(calendar_year, "-1-1")) + dry_date_start)
 c.med$gage = sprintf("%08d",c.med$gage)
 
-median.peak = c(median(clust$peak_date),200,160,191, 197)
+median.peak = c(median(clust$dry_date_start),203,180,215,209)
 
 
 out = as.data.frame(NA)
@@ -118,7 +118,7 @@ for (i in 1:5){
   dat = file[peak.ind:dry_date.ind,5]
   dat[length(dat)] = 5
   length(dat) = 1000
-  ind = seq(median.peak[i]-1,(median.peak[i]-1)+999,1)
+  ind = seq(median.peak[i]-1,(median.peak[i]-1)+999,1)-c.med$peak2zero[i]
   out = cbind(out,dat)
   ind.out = cbind(ind.out,ind)
 }
@@ -159,17 +159,18 @@ cluster.labels <-
 
 
 hydro = ggplot(all,aes(x=peak_day,y=round(q,0),color = gage)) +
-  geom_line(size=1,alpha=.9)+
+  geom_line(size=.5,alpha=.9)+
   scale_color_manual(name = "Cluster Membership",values = cols,labels=cluster.labels)+
-  xlim(150,225)+
-  xlab("Median Peak Date (DOY)")+
+  # xlim(170,230)+
+  xlab("Day of Year")+
   ylab('Discharge (cfs)')+
-  theme_light()
+  theme_minimal()
 
-hydro
+hydro  + theme(legend.position = "none")
 
-
-
+pdf("docs//synthHydro.pdf", width = 12, height=12)
+hydro+ theme(legend.position = "none")
+dev.off()
 
 
 

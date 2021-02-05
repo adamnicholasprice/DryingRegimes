@@ -17,6 +17,7 @@
 ############################# Packages #############################
 library(ggplot2)
 library(tidyverse)
+library(patchwork)
 ############################# Code ################################
 
 
@@ -71,11 +72,11 @@ p = peak2zero  + drying_rate + dry_date_start + dry_dur + peakQ + ann_freq +
   theme_light() &
   labs(x=NULL)
 
-source('code/dryingMetrics_medianHydrograph.R')
+# source('code/dryingMetrics_medianHydrograph.R')
 
-
-out = p | (hydro/hydro)
-
-# jpeg("docs//boxplot.jpg", width = 10, height=6, units = "in", res=300)
-out
-# dev.off()
+# 
+# out = p | (hydro/hydro)
+# 
+# # jpeg("docs//boxplot.jpg", width = 10, height=6, units = "in", res=300)
+# out
+# # dev.off()

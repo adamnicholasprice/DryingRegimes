@@ -124,32 +124,35 @@ counts = get_counts(df,peak2zero)
 peak2zero = ggplot(data=df, aes(x = log(peak2zero),y=Name,group=Name,fill=Name,linetype=CLASS)) + 
   plot_lay_left() + 
   # xlim(0,200) + 
-  annotate("text", x = 6, y = y_pos, label = paste0(abbreviate(paste(counts$Name),2),' = ',counts$n))+
-  xlab("Peak2Zero \n(log(days))")
+  annotate("text", x = 6, y = y_pos, label = paste0("n= ",counts$n))+
+  xlab("Dry-down duration \n(log(days))")
 
 drying_rate = ggplot(data=df, aes(x = drying_rate,y=Name,group=Name,fill=Name,linetype=CLASS)) + 
   plot_lay() +
   xlim(0,4) + 
-  xlab("Drying Rate\n(1/days)")
+  xlab("Drying rate\n(1/days)")
 
 
 dry_date_start = ggplot(data=df, aes(x = dry_date_start,y=Name,group=Name,fill=Name,linetype=CLASS)) + 
-  plot_lay()+ xlab("Dry Start Date\n(days)")
+  plot_lay()+ xlab("No flow start date\n(days)")
 
 dry_dur = ggplot(data=df, aes(x = log(dry_dur),y=Name,group=Name,fill=Name,linetype=CLASS)) + 
-  plot_lay() + xlab("No Flow Duration\n(log(days))")
+  plot_lay() + xlab("No flow duration\n(log(days))")
 
 peakQ = ggplot(data=df, aes(x = peak_quantile,y=Name,group=Name,fill=Name,linetype=CLASS)) + 
-  plot_lay() + xlab("Peak Quantile")
+  plot_lay() + xlab("Antecedent peak quantile")
 
 ann_freq = ggplot(data=df, aes(x = freq_local,y=Name,group=Name,fill=Name,linetype=CLASS)) + 
-  plot_lay() + xlab("Event Frequency")
+  plot_lay() + xlab("Annual event frequency")
 
 all.points  = peak2zero  + drying_rate + dry_date_start + dry_dur + peakQ + ann_freq + plot_layout(ncol = 6, guides = "collect") & 
-  theme(legend.position = 'right', plot.title = element_text(hjust = 0.5))
+  theme(legend.position = 'bottom', plot.title = element_text(hjust = 0.5))
 
 all.points
 
+pdf('docs/ridgePlots_ecoregion.pdf')
+all.points
+dev.off()
 
 ######################################################################
 ######################################################################
@@ -202,7 +205,9 @@ ann_freq = ggplot(data=df,aes(x=freq_local,y=factor(kmeans),group = paste(factor
 
 p = peak2zero  + drying_rate + dry_date_start + dry_dur + peakQ + ann_freq + plot_layout(ncol = 6, guides = "collect") & theme(legend.position = 'right') 
 
+tiff("docs//ridgePlotsCluster.tiff", width = 10, height=6, units = "in", res=300)
 p
+dev.off()
 
 
 
@@ -217,82 +222,57 @@ p
 
 bp <- function(metric){
   ggplot(data=df)+
-    geom_boxplot(aes(x=paste('kmeans',factor(kmeans)),y=metric,group=kmeans,fill = factor(kmeans)),outlier.colour = NA)+
-    scale_fill_manual(values = cols,"Cluster Membership")
+    geom_boxplot(aes(x=paste('Cluster',factor(kmeans)),y=metric,group=kmeans,fill = factor(kmeans)),outlier.colour = NA)+
+    scale_fill_manual(values = cols,"Cluster Membership")+
+    theme_light()
 }
 
 peak2zero = bp(df$peak2zero)+
-  ylim(c(0,100))+
-  ylab("Peak2Zero\n(Days)")
+  ylim(c(0,70))+
+  ylab("Dry-down duration\n(Days)")+
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank())
   
 
 drying_rate = bp(df$drying_rate) + 
   ylim(0,2)+
-  ylab("Drying Rate\n(1/Days)")
+  ylab("Drying rate\n(1/Days)")+
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank())
 
 dry_date_start = bp(df$dry_date_start)+
-  ylab("Dry Date Start\n(Day of Year)")
+  ylab("Dry date start\n(Day of Year)")+
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank())
 
 
 dry_dur = bp(df$dry_dur) + 
-  ylim(c(0,500))+
-  ylab("No Flow Duration\n(Days)")
+  ylim(c(0,400))+
+  ylab("No flow duration\n(Days)")+
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank())
 
 peakQ = bp(df$peak_quantile)+
-  ylab("Peak Quantile")
+  ylab("Antecedent peak quantile")+
+  xlab(NULL)
 
 
 ann_freq = bp(df$freq_local)+
-  ylab("Event Frequency")
+  ylim(c(0,15))+
+  ylab("Annual event requency")+
+  xlab(NULL)
 
 
 p = peak2zero  + drying_rate + dry_date_start + dry_dur + peakQ + ann_freq + 
-  plot_layout(ncol = 2, guides = "collect") & 
-  theme_light() &
-  labs(x=NULL)
+  plot_layout(ncol = 2, guides = "collect") & theme(legend.position = "none")
 
 p
 
+pdf("docs//boxPlots.pdf")
+p
+dev.off()
 
 
-
-######################################################################
-######################################################################
-########################## Stacked Area ##############################
-######################################################################
-######################################################################
-
-
-plot_lay <-function(){
-  list(
-    theme_bw(),
-      ylab('Proportion of Drying Events'),
-      xlab('Julian Date'),
-      #Axes Options
-      theme(
-        axis.title = element_text(size=14),
-        axis.text  = element_text(size = 10)),
-      #Legend Options
-      theme(legend.position = "bottom", 
-            legend.title = element_text(size=14), 
-            legend.text = element_text(size=10)) 
-  )
-}
-
-# Summarize Data
-library(dplyr)
-temp <- df  %>%
-  group_by(dry_date_start,kmeans) %>%
-  summarise(n = sum(kmeans)) %>%
-  mutate(percentage = round(n / sum(n),4))
-
-kmeans.stacked = ggplot(temp, aes(x=dry_date_start, y=percentage, fill=factor(kmeans))) + 
-  geom_area(size=.5, colour="black")+
-  scale_fill_manual(values=cols,"Cluster Membership")+
-  ggtitle("Kmeans")+
-  plot_lay()
-
-kmeans.stacked
 
 
 ######################################################################

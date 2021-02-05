@@ -27,9 +27,9 @@ library(tidyverse)
 
 
 ############ Load rasters and shapefile #######
-data <- raster("../data/rasterized_regions.tif")
+data <- raster("data/rasterized_regions.tif")
 crs <- crs(data)
-gages<- st_read("../data/all_conus_v2/all_conus_v2.shp") %>%st_transform(.,"+proj=laea +lat_0=45 +lon_0=-100 +x_0=0 +y_0=0 +a=6370997 +b=6370997 +units=m +no_defs")
+gages<- st_read("data/all_conus_v2/all_conus_v2.shp") %>% st_transform(.,"+proj=laea +lat_0=45 +lon_0=-100 +x_0=0 +y_0=0 +a=6370997 +b=6370997 +units=m +no_defs")
 
 
 ###### Extract the ecoregions 
@@ -40,7 +40,7 @@ ext = as.data.frame(test)
 ext$gage <- gages$GAGE_ID
 
 ########### Load the aggregated ecoregion file
-agg_eco =as.data.frame(readOGR('../data/dissolved_ecoregions_060220/dissolved_ecoregions_060220.shp'))
+agg_eco =as.data.frame(readOGR('data/dissolved_ecoregions_060220/dissolved_ecoregions_060220.shp'))
 agg_eco$NA_L1CODE = as.numeric(agg_eco$NA_L1CODE)
 
 
@@ -51,7 +51,7 @@ tt$gage = as.numeric(as.character(tt$gage))
 
 
 #################### Extract the ~900 gages that correspond to event data
-dat = read.csv('../data/metrics_by_event.csv')
+dat = read.csv('data/metrics_by_event.csv')
 gage = as.data.frame(unique(dat$gage))
 to.write = left_join(gage,tt,by=c("unique(dat$gage)" = "gage"))
 

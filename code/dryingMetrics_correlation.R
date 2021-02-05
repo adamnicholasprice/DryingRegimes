@@ -24,7 +24,7 @@ library(viridis)
 
 ############################# Code ################################
 
-dat = read.csv("../data/metrics_by_event_combined.csv")
+dat = read.csv("data/metrics_by_event_combined.csv")
 
 ##### Just select metrics
 dat.metric = dat%>% select(peak_date,peak2zero,drying_rate,dry_date_start,dry_dur)

@@ -466,6 +466,6 @@ write_csv(output,paste0('../data/metrics_by_event_test.csv'))
 # #Write output
 # write_csv(export,paste0('./data/metrics_by_gage.csv'))
 # 
-=======
+
 write_csv(output,paste0('./data/metrics_by_event.csv'))
->>>>>>> 67cc69ffa7cd9ef9d880ac785d083fc4dd9bf448
+

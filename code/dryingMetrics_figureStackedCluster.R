@@ -14,6 +14,8 @@ remove(list=ls())
 
 #Load packages of interest
 library(tidyverse)
+library(lubridate)
+library(scales)
 
 #Load data of interest
 df <- read.csv("data/kmeans.csv") %>% as_tibble(.)
@@ -33,6 +35,7 @@ fun<-function(n){
   
   #Creat tibble of event julian days
   output<-tibble(j_day = seq(event$peak_date, event$peak_date+ event$peak2zero + event$dry_dur))
+  # output<-tibble(j_day = seq(event$peak_date, event$peak_date+ event$peak2zero))
   
   #Deal with vals over 365
   while(max(output$j_day, na.rm=T)>365){
@@ -124,13 +127,20 @@ ts<-ts%>%
   mutate(j.date = if_else(j.date<"1970-03-01", j.date+365, j.date+0))
 
 
+
+cols <- 
+  c("one" = "#4477AA",
+    "two" = "#66CCEE",
+    "three" = "#228833",
+    "four" = "#CCBB44")
+
 #Plot
 ts_plot<-ggplot(ts, aes(x=j.date, y=value, fill=name)) + 
   geom_area() +
   scale_fill_manual(
-    values=c("#4477AA","#66CCEE","#228833","#CCBB44"), 
+    values=cols, 
     name = "Cluster") +
-  scale_x_date(labels = date_format("%B"))+
+  scale_x_date(labels = date_format("%B"),expand = c(0,0))+
   theme_bw() + 
   ylab('Proportion of Gages') +
   xlab('Month') +
@@ -138,7 +148,8 @@ ts_plot<-ggplot(ts, aes(x=j.date, y=value, fill=name)) +
   theme(
     axis.title = element_text(size=14),
     axis.text  = element_text(size = 10),
-    legend.position = 'none') 
+    legend.position = 'none') +
+  scale_y_continuous(expand = c(0,0))
 
 
 ts_plot = ts_plot + 
@@ -146,6 +157,7 @@ ts_plot = ts_plot +
            y = c(0.1,.50,.85,.98), 
            label = c("Cluster 4","Cluster 3","Cluster 2","Cluster 1"),
            color = "Black")
+  
 
 
 ### Plot Number of events
@@ -164,9 +176,9 @@ ts.count<-ts.count %>%
 ts.count.plot = ggplot(ts.count) +
   geom_line(aes(x=j.date,y=value,color=name))+
   scale_color_manual(
-    values=c("#4477AA","#66CCEE","#228833","#CCBB44"), 
+    values=cols, 
     name = "Cluster")+
-  scale_x_date(labels = date_format("%B"))+
+  scale_x_date(labels = date_format("%B"),expand = c(0,0))+
   theme_bw() + 
   ylab('Number of Events') +
   xlab('Month') +
@@ -175,10 +187,11 @@ ts.count.plot = ggplot(ts.count) +
         axis.text  = element_text(size = 10),
         legend.position = 'none',
         axis.text.x = element_blank(),
-        axis.title.x = element_blank())
+        axis.title.x = element_blank())+
+  scale_y_continuous(expand = c(0,0))
 
 ts.count.plot = ts.count.plot + annotate("text", x = as.Date("1970-09-01"), 
-              y = c(500,1300,3500,2100), 
+              y = c(500,1300,2800,2100), 
               label = c("Cluster 1","Cluster 2","Cluster 3","Cluster 4"),
               color = c("#4477AA","#66CCEE","#228833","#CCBB44"))
 
@@ -187,6 +200,50 @@ library(patchwork)
 
 out = ts.count.plot / ts_plot 
 
-jpeg("docs//stackedClusterPlots.jpg", width = 10, height=6, units = "in", res=300)
+pdf("docs//stackedClusterPlots.pdf", width = 10, height=6)
 out
 dev.off()
+
+
+## for john
+
+tt = ts.count %>% 
+  select(a_day,value,j.date) %>% 
+  group_by(a_day) %>%
+  mutate(value= sum(value)) %>%
+  select(a_day,value,j.date) %>%
+  distinct()
+
+tt$name = "all"
+
+
+
+ts.count.plot = ggplot(ts.count) +
+  geom_line(aes(x=j.date,y=value,color=name))+
+  geom_area(data =tt,aes(x=j.date,y= value),fill="grey",alpha=.25)+
+  scale_color_manual(
+    values=cols,
+    name = "Cluster")+
+  scale_x_date(labels = date_format("%B"),expand = c(0,0))+
+  theme_bw() + 
+  ylab('Number of Events') +
+  xlab('Month') +
+  #Axes Options
+  theme(axis.title = element_text(size=14),
+        axis.text  = element_text(size = 10),
+        legend.position = 'none',
+        axis.text.x = element_blank(),
+        axis.title.x = element_blank())+
+  scale_y_continuous(limits = c(0,7000),expand = c(0,0))
+
+ts.count.plot = ts.count.plot + annotate("text", x = as.Date("1970-09-01"), 
+                                         y = c(500,1300,2800,2100,5000), 
+                                         label = c("Cluster 1","Cluster 2","Cluster 3","Cluster 4","All Events"),
+                                         color = c("#4477AA","#66CCEE","#228833","#CCBB44","#000000"))
+
+out = ts.count.plot / ts_plot 
+
+pdf("docs//stackedClusterPlots_ALT.pdf")
+out
+dev.off()
+

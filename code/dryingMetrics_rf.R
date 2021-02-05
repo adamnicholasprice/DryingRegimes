@@ -127,92 +127,133 @@ tune_res_all <- readr::read_csv('data/tuning_pararams.csv')
 # choose number of predictors - based on script 02_RandomForest_FigureOutNumPredictors.R
 # npred_final <- tibble::tibble(metric = c("annualnoflowdays", "zeroflowfirst", "peak2z_length"),
 #                               npred = c(22, 27, 27)) 
+
+backup = sub
+names = c("all","c1","c2","c3","c4")
+df = list(sub,c1,c2,c3,c4)
+
+for (i in 1:length(df)){
+  sub = data.frame(df[i])
+  print(paste("starting",names[i]))
+
+
+  # Subset data
+  set.seed(42)
+  sub.split = initial_split(sub,prop=.8)
+  sub.train = training(sub.split)
+  sub.test = testing(sub.split)
   
-
-set.seed(42)
-sub.split = initial_split(sub,prop=.8)
-
-sub.train = training(sub.split)
-sub.test = testing(sub.split)
-
-
-
-    # set up model engine
-tune_res <-
-  tune_res_all %>% 
-  subset(.metric == "mn_log_loss") %>% 
-  dplyr::filter(mean == min(mean))
   
-rf_engine <- 
-  rand_forest(trees = tune_res$trees[1], 
-              mtry = tune_res$mtry[1], 
-              min_n = tune_res$min_n[1]) %>% 
-  set_engine("ranger", 
-             num.threads = (parallel::detectCores() - 1),
-             importance = "permutation") %>% 
-  set_mode("classification")
+  # set up model engine
+  tune_res <-
+    tune_res_all %>% 
+    subset(.metric == "mn_log_loss") %>% 
+    dplyr::filter(mean == min(mean))
     
-# set up recipe
-rf_recipe = recipe(kmeans ~.,
-                 data = sub.train,
-                 update_role(event_id,new_role = "ID"))
-
-sub.prep = prep(rf_recipe)
-juiced = juice(sub.prep)
-
-# set up workflow
-rf_workflow <-
-  workflow() %>% 
-  add_model(rf_engine) %>% 
-  add_recipe(rf_recipe)
+  rf_engine <- 
+    rand_forest(trees = tune_res$trees[1], 
+                mtry = tune_res$mtry[1], 
+                min_n = tune_res$min_n[1]) %>% 
+    set_engine("ranger", 
+               num.threads = (parallel::detectCores() - 1),
+               importance = "permutation") %>% 
+    set_mode("classification") ##### Classification not regression
   
-# fit model
-rf_fit <- 
-  rf_workflow %>% 
-  fit(data = sub.train)
+  
+      
+  # set up recipe
+  rf_recipe = recipe(kmeans ~.,
+                   data = sub.train,
+                   update_role(event_id,new_role = "ID"))
+  
+  sub.prep = prep(rf_recipe)
+  juiced = juice(sub.prep)
+  
+  
+  
+  # set up workflow
+  rf_workflow <-
+    workflow() %>% 
+    add_model(rf_engine) %>% 
+    add_recipe(rf_recipe)
     
-# predict
-sub.train.predict <- predict(rf_fit, sub.train,type = "prob") %>% magrittr::set_colnames(c("pred_clust1", "pred_clust2","pred_clust3","pred_clust4"))
-sub.test.predict <-  predict(rf_fit, sub.test,type = "prob")%>% magrittr::set_colnames(c("pred_clust1", "pred_clust2","pred_clust3","pred_clust4"))
+  # fit model
+  rf_fit <- 
+    rf_workflow %>% 
+    fit(data = sub.train)
+  
+  
+  # predict
+  sub.train.predict <- predict(rf_fit, sub.train)
+  sub.test.predict <-  predict(rf_fit, sub.test)
+  
+  print(paste("Done predicting",names[i]))
+  
+  
+  sub.train.confusion = 
+    caret::confusionMatrix(sub.train.predict$.pred_class,sub.train$kmeans)
+  sub.test.confusion = 
+    caret::confusionMatrix(sub.test.predict$.pred_class,sub.test$kmeans)
+  
+  
+  print(paste("Confusion matrix",names[i]))
+  
+  
+  # Combine with train and test datasets
+  sub.train = cbind(sub.train,sub.train.predict)
+  sub.test = cbind(sub.test,sub.test.predict)
+      
+  # combine training and test output
+  fit_data_i <- 
+    dplyr::bind_rows(sub.train, sub.test)
+      
+  # extract variable importance
+  fit_rf_imp_i <- tibble::tibble(predictor = names(pull_workflow_fit(rf_fit)$fit$variable.importance),
+                                 IncMSE = pull_workflow_fit(rf_fit)$fit$variable.importance,
+                                 oobMSE = pull_workflow_fit(rf_fit)$fit$prediction.error)
+  
+  fit_rf_imp_i %>%
+    readr::write_csv(paste0('data/',names[i],'_rf_importance.csv'))
+  
+  fit_data_i %>%
+    readr::write_csv(paste0('data/',names[i],'_rf_data.csv'))
+  
+  data.frame(sub.test.confusion$overall)%>%
+    readr::write_csv(paste0('data/',names[i],"_overallPerformMetrics.csv"))
+  
+  data.frame(sub.test.confusion$byClass)%>%
+    readr::write_csv(paste0('data/',names[i],"_classPerformMetrics.csv"))
+  
+  data.frame(sub.test.confusion$table) %>%
+    readr::write_csv(paste0('data/',names[i],"_confusionMetrics.csv"))
+}
 
-# Combine with train and test datasets
-
-sub.train = cbind(sub.train,sub.train.predict)
-sub.test = cbind(sub.test,sub.test.predict)
-    
-# combine training and test output
-fit_data_i <- 
-  dplyr::bind_rows(sub.train, sub.test)
-  # dplyr::select(event_id, kmeans, predicted) %>% 
-  # dplyr::left_join(dplyr::select(sub, gage, event_id, Sample), 
-  #                  by = c("gage", "event_id"))
-    
-# extract variable importance
-fit_rf_imp_i <- tibble::tibble(predictor = names(pull_workflow_fit(rf_fit)$fit$variable.importance),
-                               IncMSE = pull_workflow_fit(rf_fit)$fit$variable.importance,
-                               oobMSE = pull_workflow_fit(rf_fit)$fit$prediction.error)
 
 
-ggplot(fit_rf_imp_i,aes(x = reorder(predictor,IncMSE),y = IncMSE)) +
-  geom_bar(stat="identity", position="dodge")
-
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Step -------------------------------------------
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # partial dependence plots for all variables
-ranger_fit <- ranger::ranger(kmeans ~ ., 
-                             data = dplyr::bind_cols(rf_fit$pre$mold$outcomes, 
+ranger_fit <- ranger::ranger(kmeans ~ .,
+                             data = dplyr::bind_cols(rf_fit$pre$mold$outcomes,
                                                      rf_fit$pre$mold$predictors),
                              num.trees = tune_res$trees[1],
-                             mtry = tune_res$mtry[1], 
+                             mtry = tune_res$mtry[1],
                              min.node.size = tune_res$min_n[1],
                              num.threads = (parallel::detectCores() - 1),
                              probability = T,
-                              importance = "permutation")
+                            importance = "permutation",
+                            classification = T)
 
 doParallel::registerDoParallel(3)
-    
+
+df_pdp_out = data.frame()
+
 for (v in all.pred){
   var <- v
   print(var)
   for (class in 1:4){
+    print(paste0("Class ",class))
     df_pdp_var <-
       pdp::partial(ranger_fit,
                    pred.var = var,
@@ -231,64 +272,11 @@ for (v in all.pred){
       df_pdp <- dplyr::bind_rows(df_pdp, df_pdp_var)
     }
   }
-  if (var == 1){
-    df_pdp <- df_pdp_var
-  } else {
-    df_pdp <- dplyr::bind_rows(df_pdp, df_pdp_var)
-  }
+  df_pdp_out <- dplyr::bind_rows(df_pdp_out, df_pdp)
 }
-  
-ggplot(data=df_pdp)+ geom_point(aes(x=value,y=yhat,color=factor(class)))+ggtitle("P.PET90") +xlim(c(0,2))
 
-    
-    # combine
-    if (m == metrics[1] & r == regions[1]){
-      fit_data_out <- fit_data_i
-      fit_rf_imp <- fit_rf_imp_i
-      fit_pdp_out <- df_pdp
-    } else {
-      fit_data_out <- dplyr::bind_rows(fit_data_out, fit_data_i)
-      fit_rf_imp <- dplyr::bind_rows(fit_rf_imp, fit_rf_imp_i)
-      fit_pdp_out <- dplyr::bind_rows(fit_pdp_out, df_pdp)
-    }
-    
-    # status update
-    print(paste0(m, " ", r, " complete, ", Sys.time()))
-    
-  }
-}
+beepr::beep(sound=8)
 
 # save data
-fit_data_out %>% 
-  dplyr::select(gage_ID, currentclimyear, observed, predicted, region_rf, metric) %>% 
-  readr::write_csv(file.path("results", "04_RandomForest_RunModels_Predictions.csv"))
-
-fit_rf_imp %>% 
-  readr::write_csv(file.path("results", "04_RandomForest_RunModels_VariableImportance.csv"))
-
-fit_pdp_out %>% 
-  readr::write_csv(file.path("results", "04_RandomForest_RunModels_PartialDependence.csv"))
-
-# plots
-min(subset(fit_data_out, metric == "annualnoflowdays")$predicted)
-
-ggplot(subset(fit_data_out, metric == "annualnoflowdays" & Sample == "Test"), 
-       aes(x = predicted, y = observed, color = region)) +
-  geom_point() +
-  geom_abline(intercept = 0, slope = 1, color = col.gray) +
-  scale_color_manual(values = pal_regions) +
-  facet_wrap(~region_rf)
-
-ggplot(subset(fit_data_out, metric == "annualnoflowdays"), 
-       aes(x = predicted, y = observed, color = region)) +
-  geom_point() +
-  geom_abline(intercept = 0, slope = 1, color = col.gray) +
-  scale_color_manual(values = pal_regions) +
-  facet_wrap(~region_rf)
-
-ggplot(subset(fit_data_out, metric == "annualnoflowdays" & Sample == "Test"), 
-       aes(x = currentclimyear, y = (predicted - observed), color = region)) +
-  geom_hline(yintercept = 0, color = col.gray) +
-  geom_point() +
-  scale_color_manual(values = pal_regions) +
-  facet_wrap(~region_rf)
+df_pdp_out %>%
+  readr::write_csv('data/all_PDP.csv')
