@@ -50,7 +50,7 @@ df$kmeans = as.factor(df$kmeans)
 
 
 
-sub = df %>%  select(
+sub = df %>%  select(event_id,
   kmeans,
   lulc_water_prc,lulc_dev_prc,lulc_forest_prc,lulc_barren_prc,lulc_grass_prc,lulc_ag_prc,lulc_wetland_prc,
   DRAIN_SQKM,SNOW_PCT_PRECIP,GEOL_REEDBUSH_DOM,FRESHW_WITHDRAWAL,
@@ -162,12 +162,14 @@ for (i in 1:length(df)){
   
       
   # set up recipe
-  rf_recipe = recipe(kmeans ~.,
-                   data = sub.train,
-                   update_role(event_id,new_role = "ID"))
+  rf_recipe = sub.train %>%
+    recipe(kmeans ~.) %>%
+    update_role(event_id,new_role = "ID")
+                   # update_role(-event_id, new_role = 'predictor'))
+    
   
-  sub.prep = prep(rf_recipe)
-  juiced = juice(sub.prep)
+  # sub.prep = prep(rf_recipe)
+  # juiced = juice(sub.prep)
   
   
   
