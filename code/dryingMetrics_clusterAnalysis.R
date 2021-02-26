@@ -75,28 +75,45 @@ dat.scale <- df %>%
   #scale vars
   scale()
 
-dat.scale <- df %>% 
+df_sub <- df %>% 
   #Select vars of interest
-  select("peak2zero",
-         "peak_quantile", "freq_local") %>% 
-  #scale vars
-  scale()
-
+  select("peak2zero","drying_rate"
+         , "dry_dur",
+         "peak_quantile", "freq_local")
 #####################################################################
 ######### NbClust ###################################################
 #####################################################################
 
 for (i in 1){
-set.seed(10)
+set.seed(110)
 samp = sample(1:nrow(df),1000)
 sub = as.matrix(dat.scale[samp,])
 
 rownames(sub) = df$gage[samp]
 
 
-ideal_ward2 <- NbClust(data = sub, method = "ward.D2")
+ideal_ward2 <- NbClust(data = sub, method = "kmeans")
 # factoextra::fviz_nbclust(ideal_ward2) + theme_minimal() + ggtitle("NbClust's optimal number of clusters")
 }
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Other popular clsutering indecies
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+# Elbow method
+fviz_nbclust(dat.scale, kmeans, method = "wss") +
+  geom_vline(xintercept = 4, linetype = 2)+
+  labs(subtitle = "Elbow method")
+# Silhouette method
+fviz_nbclust(df, kmeans, method = "silhouette")+
+  labs(subtitle = "Silhouette method")
+# Gap statistic
+# nboot = 50 to keep the function speedy. 
+# recommended value: nboot= 500 for your analysis.
+# Use verbose = FALSE to hide computing progression.
+set.seed(123)
+fviz_nbclust(df, kmeans, nstart = 25,  method = "gap_stat", nboot = 50)+
+  labs(subtitle = "Gap statistic method")
 
 
 #####################################################################
@@ -138,3 +155,39 @@ df$kmeans = wcke$cluster
 
 write.csv(df,'../data/kmeans.csv')
 
+# Plot
+
+tt = prcomp(df_sub,center=T,scale=T)
+cols <- 
+  c("1" = "#4477AA",
+    "2" = "#66CCEE",
+    "3" = "#228833",
+    "4" = "#CCBB44",
+    "5" = "#EE6677",
+    "6" = "#AA3377",
+    "7" = "#BBBBBB",
+    "8" = "#999944",
+    "9" = "#332288")
+
+comps = as.data.frame(tt$x)
+loads =  data.frame(Variables = rownames(tt$rotation), tt$rotation)
+
+
+newdf <- cbind(wcke$cluster,comps[,c(1,2)]) %>%
+  setNames(c("cluster","PC1","PC2"))
+
+p = ggplot() +
+  geom_point(data = newdf, aes(x=PC1, y=PC2, fill = factor(cluster)),shape=21, col="black")+
+  scale_fill_manual(values = cols)
+
+p = p + geom_segment(data = loads, 
+                 aes(x=0,y=0,xend=PC1*20,yend=PC2*20),
+                 arrow = arrow(length = unit(1/2, "picas")))+ 
+  annotate("text", x = (loads$PC1*15), y = (loads$PC2*15),
+            label = loads$Variables)+
+  theme_minimal()
+
+
+pdf("docs/PCA.pdf")
+p
+dev.off()

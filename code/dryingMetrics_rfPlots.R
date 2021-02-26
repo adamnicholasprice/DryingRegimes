@@ -207,8 +207,9 @@ mets =
 
 confusion.mat = ggplot(data=dat)+
   geom_tile(aes(x= Reference,y = Prediction,fill=freq.Perc))+
-  scale_fill_gradient(low="#0082c8",
-                      high="#e6194b")+
+  # scale_fill_gradient(low="#0082c8",
+  #                     high="#e6194b")+
+  scale_fill_viridis_c(option = "viridis")+
   geom_text(aes(x= Reference,y = Prediction,label=Freq), color="white") +
   geom_text(data=mets,aes(x= Reference,y = Prediction+.1,label=paste0("(",round(freq.Perc,2)," / ",round(pred.Perc,2),")")), color="white")+
   scale_y_continuous(trans = "reverse",name = "Predicted cluster",expand=c(0,0),label=c("Clust 1","Clust 2","Clust 3","Clust 4"),breaks=c(1,2,3,4))+
@@ -221,7 +222,9 @@ confusion.mat = ggplot(data=dat)+
     text=element_text(size=12),
     axis.title = element_text(size = 14))
 
-pdf("docs//randomForest_confusionMatrix.pdf")
+
+
+pdf("docs//randomForest_confusionMatrixViridis.pdf")
 confusion.mat
 dev.off()
 

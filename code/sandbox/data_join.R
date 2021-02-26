@@ -1,17 +1,19 @@
 all = read.csv("data/kmeans.csv")
 
-clust = read.csv("data/dryingRegimes_data_RF.csv")
 
-tt= all %>%  select(gage,event_id,peak_date,peak_value,peak_quantile,
+tt= all %>%  select(gage,X,dec_lat_va,dec_long_va,peak_date,peak_value,peak_quantile,
                 peak2zero,drying_rate,p_value,calendar_year,season,
-                meteorologic_year,dry_date_start,dry_date_mean,dry_dur,Name,TOPWET) %>%
-  left_join(.,clust,by=c('gage','TOPWET'))
+                meteorologic_year,dry_date_start,dry_date_mean,dry_dur,Name,TOPWET)
+colnames(tt) = c('gage','event_id','dec_lat_va','dec_long_va','peak_date','peak_value','peak_quantile',
+                      'peak2zero','drying_rate','p_value','calendar_year','season',
+                      'meteorologic_year','dry_date_start','dry_date_mean','dry_dur','AggEcoregion','TOPWET')
 
-sub
+pred = read.csv("data/all_rf_data.csv") %>% select(X,gage,.pred_class)
 
-pred = read.csv("data/all_rf_data.csv")
+### load sub from RF
 
-abs(pred$lulc_forest_prc) - abs(sub$lulc_forest_prc)
+data= tt %>% 
+  left_join(.,sub,by=c("event_id"="X","gage")) %>% 
+  left_join(.,pred,by=c("event_id"="X","gage"))
 
-
-tt = all %>% inner_join(.,fit_data_i,by="event_id")
+write.csv(data,"data/dryingRegimes_data_RF.csv")

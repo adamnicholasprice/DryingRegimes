@@ -98,10 +98,14 @@ map = map +
   geom_sf(data=newData,aes(fill=Name),color=NA,alpha=.4)+
   scale_fill_manual(values = pal_regions)
 
-map = map +   geom_point(data=k.means, aes(x=dec_long_va, y=dec_lat_va,colour = factor(cluster), size = proportion),alpha=.6)+
+
+
+map = map + 
+  geom_point(data=k.means, aes(x=dec_long_va, y=dec_lat_va,alpha = proportion),color="black",shape=1)+
+  geom_point(data=k.means, aes(x=dec_long_va, y=dec_lat_va,colour = factor(cluster), alpha = proportion))+
   scale_color_manual(values = cols)+
   # scale_radius(trans='sqrt',breaks = c(.2,.4,.6,.8,1),labels = c(5,4,3,2,1),name = "Number of Cluster Changes") +
-  scale_radius(trans = 'sqrt',breaks = c(0,.2,.4,.6,.8,1),name = "Proportion of Events in Cluster")+
+  # scale_radius(trans = 'sqrt',breaks = c(0,.2,.4,.6,.8,1),name = "Proportion of Events in Cluster")+
   scale_shape(name="Gage Type")+
   facet_wrap(~cluster)+
   theme_void()
