@@ -315,11 +315,50 @@ write_csv(df, "data/SI_sensitivity.csv")
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 4: Plot -----------------------------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#4.1 Create individual plots ---------------------------------------------------
+#4.1 Prep Data (and estimate n_vents/yr for each event!) -----------------------
 #If starting here -- read the csv
 df<-read_csv('data/SI_sensitivity.csv')
 
-#dry down duration
+#Create unique id for master data.frame
+df<-df %>% mutate(master_id = seq(1, nrow(df)))
+
+#Create fun to estimate number of drying events in the same meterologic year per event
+fun<-function(n){
+  
+  #Libraries of interest
+  library(dplyr)
+  
+  #isolate event of interest
+  event <- df[n,]
+  
+  #count number of events in same year and at same gage
+  count<- df %>% 
+    filter(meteorologic_year == event$meteorologic_year) %>% 
+    filter(gage == event$gage) %>% 
+    filter(threshold == event$threshold) %>% 
+    nrow() 
+  
+  #Export info
+  tibble(
+    master_id = event$master_id,
+    freq_local = count
+  )
+}
+
+#run function
+n.cores <- detectCores() - 1
+cl <- makeCluster(n.cores)
+clusterExport(cl, "df")
+output<-parLapply(cl, seq(1,nrow(df)), fun)
+stopCluster(cl)
+
+#add results to df
+output<-bind_rows(output)
+df<-left_join(df,output)
+
+
+#4.2 Create individual plots ---------------------------------------------------
+#dry down duration 
 dry_dur<-df %>% 
   #Count events by gage and peak threshold
   # group_by(gage, meteorologic_year, threshold) %>% 
@@ -350,7 +389,7 @@ dry_dur<-df %>%
     axis.title = element_text(size = 14)
   )
 
-#drying rate
+#drying rate 
 drying_rate<-df %>% 
   #Count events by gage and peak threshold
   # group_by(gage, meteorologic_year, threshold) %>% 
@@ -381,7 +420,7 @@ drying_rate<-df %>%
     axis.title = element_text(size = 14)
   )
 
-#no flow duration
+#no flow duration 
 dry_dur<-df %>% 
   #Count events by gage and peak threshold
   # group_by(gage, meteorologic_year, threshold) %>% 
@@ -476,7 +515,7 @@ n_events<-df %>%
         axis.title = element_text(size = 14)
       )
  
-#peak quantile
+#peak quantile -----------------------------------------------------------------
 dry_date_start <-df %>% 
   #Count events by gage and peak threshold
   # group_by(gage, meteorologic_year, threshold) %>% 
