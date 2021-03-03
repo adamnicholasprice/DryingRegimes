@@ -287,14 +287,10 @@ tf<-Sys.time()
 tf-t0
 
 #Write output
-<<<<<<< HEAD
 output<-output %>% select(gage, calendar_year, meteorologic_year, season,
                           peak_date, peak2zero, drying_rate, 
                           dry_date_start, dry_date_mean, dry_dur,p_value
                           )
-
-
-write_csv(output,paste0('../data/metrics_by_event_test.csv'))
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 4: Summarise metrics-----------------------------------------------------
