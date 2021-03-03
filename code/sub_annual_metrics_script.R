@@ -23,7 +23,7 @@ library(lubridate)
 library(tidyverse)
 
 # Get list of files
-files <- list.files('../data/daily_data_with_ climate_and_PET/csv',pattern = "*.csv",full.names = TRUE)
+files <- list.files('data/daily_data_with_ climate_and_PET/csv',pattern = "*.csv",full.names = TRUE)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 2: Create Function ------------------------------------------------------
@@ -56,7 +56,7 @@ metrics_fun <- function(n){
   df<-df %>%
     #Round to nearest tenth
     mutate(q = round(q, 1)) %>%
-    #25% quantile thresholds
+    #1% quantile thresholds
     mutate(q_peak = if_else(q>quantile(q,0.25),  q, 0))
   
   #Define peaks using slope break method
@@ -274,7 +274,7 @@ cl <-  makePSOCKcluster(n.cores)
 clusterExport(cl, c('files', 'metrics_fun'), env=.GlobalEnv)
 
 # Use mpapply to exicute function
-x<-parLapply(cl,seq(1, length(files)),execute) #length(files)
+x<-parLapply(cl,seq(1, 32),execute) #length(files)
 
 # Stop the cluster
 stopCluster(cl)
@@ -287,10 +287,10 @@ tf<-Sys.time()
 tf-t0
 
 #Write output
-output<-output %>% select(gage, calendar_year, meteorologic_year, season,
-                          peak_date, peak2zero, drying_rate, 
-                          dry_date_start, dry_date_mean, dry_dur,p_value
-                          )
+# output<-output %>% select(gage, calendar_year, meteorologic_year, season,
+#                           peak_date, peak2zero, drying_rate, 
+#                           dry_date_start, dry_date_mean, dry_dur,p_value
+#                           )
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 4: Summarise metrics-----------------------------------------------------
