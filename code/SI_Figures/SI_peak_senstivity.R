@@ -50,7 +50,7 @@ metrics_fun <- function(n, quant){
   df<-df %>%
     #Round to nearest tenth
     mutate(q = round(q, 1)) %>%
-    #1% quantile thresholds
+    #quantile thresholds
     mutate(q_peak = if_else(q>quantile(q,quant),  q, 0))
   
   #Define peaks using slope break method
@@ -235,7 +235,7 @@ metrics_fun <- function(n, quant){
 }
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Step 3: Run of 0.05 quantile -------------------------------------------------
+# Step 3: Sensitivity Analysis -------------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Create list of n and quant
 queue<-tibble(
@@ -284,7 +284,6 @@ execute<-function(m){
   output
 }
 
-
 #Start timer
 t0<-Sys.time()
 
@@ -310,110 +309,205 @@ stopCluster(cl)
 tf<-Sys.time()
 tf-t0
 
+#Export csv
+write_csv(df, "data/SI_sensitivity.csv")
 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Step 4: Plot -----------------------------------------------------------------
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#4.1 Create individual plots ---------------------------------------------------
+#If starting here -- read the csv
+df<-read_csv('data/SI_sensitivity.csv')
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#Create boxplots
-n_events<-events %>% 
-  mutate(quant = as.factor(quant)) %>% 
+#dry down duration
+dry_dur<-df %>% 
+  #Count events by gage and peak threshold
+  group_by(gage, meteorologic_year, threshold) %>% 
+  summarise(peak2zero  = median(peak2zero,na.rm=T)) %>% 
+  #Estimate median and 25/75 quantile for each treshold
+  group_by(threshold) %>% 
+  summarise(
+    median = median(peak2zero),
+    low = quantile(peak2zero, 0.25), 
+    high = quantile(peak2zero, 0.75)
+  ) %>% 
+  #Plot
   ggplot() +
-    geom_boxplot(
-      aes(x=quant, y=n_events), 
-      outlier.shape = NA, 
-      fill="steelblue4", 
-      alpha=0.7) +
-    theme_bw() + 
-      labs(x="Peak Threshold (Quantile)", y = "Number of Drying Events") +
-      scale_y_log10(limits=c(1,100)) +
-      theme(
-        axis.text  = element_text(size = 12),
-        axis.title = element_text(size = 14)
-      )
-
-# Peak 2 Zero
-peak2zero<-events %>% 
-  mutate(quant = as.factor(quant)) %>% 
-  ggplot() +
-  geom_boxplot(
-    aes(x=quant, y=peak2zero), 
-    outlier.shape = NA, 
-    fill="orange3", 
-    alpha=0.7) +
+  geom_errorbar(
+    aes(x=threshold, ymin=low, ymax=high), 
+    width = 0, 
+    col="grey30")+
+  geom_point(
+    aes(x=threshold, y=median), 
+    shape = 21,
+    fill="steelblue4", 
+    col="grey30", 
+    size = 3) +
   theme_bw() + 
-  labs(x="Peak Threshold [Quantile]", y = "Peak2Zero [Days]") +
-  scale_y_log10(limits=c(1,100)) +
+  labs(x="Peak Threshold [Quantile]", y = "Dyring Duration [Days]") +
   theme(
     axis.text  = element_text(size = 12),
     axis.title = element_text(size = 14)
   )
 
-# Dry Duration
-dry<-events %>% 
-  mutate(quant = as.factor(quant)) %>% 
+#drying rate
+drying_rate<-df %>% 
+  #Count events by gage and peak threshold
+  group_by(gage, meteorologic_year, threshold) %>% 
+  summarise(drying_rate   = median(drying_rate ,na.rm=T)) %>% 
+  #Estimate median and 25/75 quantile for each treshold
+  group_by(threshold) %>% 
+  summarise(
+    median = median(drying_rate ),
+    low = quantile(drying_rate , 0.25), 
+    high = quantile(drying_rate , 0.75)
+  ) %>% 
+  #Plot
   ggplot() +
-  geom_boxplot(
-    aes(x=quant, y=dry_dur), 
-    outlier.shape = NA, 
-    fill="orange3", 
-    alpha=0.7) +
+  geom_errorbar(
+    aes(x=threshold, ymin=low, ymax=high), 
+    width = 0, 
+    col="grey30")+
+  geom_point(
+    aes(x=threshold, y=median), 
+    shape = 21,
+    fill="steelblue4", 
+    col="grey30", 
+    size = 3) +
   theme_bw() + 
-  labs(x="Peak Threshold [Quantile]", y = "Dry Duration [Days]") +
-  scale_y_log10(limits=c(1,100)) +
+  labs(x="Peak Threshold [Quantile]", y = "Dyring Rate [1/Days]") +
+  theme(
+    axis.text  = element_text(size = 12),
+    axis.title = element_text(size = 14)
+  )
+
+#no flow duration
+dry_dur<-df %>% 
+  #Count events by gage and peak threshold
+  group_by(gage, meteorologic_year, threshold) %>% 
+  summarise(dry_dur   = median(dry_dur ,na.rm=T)) %>% 
+  #Estimate median and 25/75 quantile for each treshold
+  group_by(threshold) %>% 
+  summarise(
+    median = median(dry_dur ),
+    low = quantile(dry_dur , 0.25), 
+    high = quantile(dry_dur , 0.75)
+  ) %>% 
+  #Plot
+  ggplot() +
+  geom_errorbar(
+    aes(x=threshold, ymin=low, ymax=high), 
+    width = 0, 
+    col="grey30")+
+  geom_point(
+    aes(x=threshold, y=median), 
+    shape = 21,
+    fill="steelblue4", 
+    col="grey30", 
+    size = 3) +
+  theme_bw() + 
+  labs(x="Peak Threshold [Quantile]", y = "No Flow Duration [Days]") +
+  theme(
+    axis.text  = element_text(size = 12),
+    axis.title = element_text(size = 14)
+  )
+
+#peak quantile
+peak_quantile<-df %>% 
+  #Count events by gage and peak threshold
+  group_by(gage, meteorologic_year, threshold) %>% 
+  summarise(peak_quantile   = median(peak_quantile ,na.rm=T)) %>% 
+  #Estimate median and 25/75 quantile for each treshold
+  group_by(threshold) %>% 
+  summarise(
+    median = median(peak_quantile ),
+    low = quantile(peak_quantile , 0.25), 
+    high = quantile(peak_quantile , 0.75)
+  ) %>% 
+  #Plot
+  ggplot() +
+  geom_errorbar(
+    aes(x=threshold, ymin=low, ymax=high), 
+    width = 0, 
+    col="grey30")+
+  geom_point(
+    aes(x=threshold, y=median), 
+    shape = 21,
+    fill="steelblue4", 
+    col="grey30", 
+    size = 3) +
+  theme_bw() + 
+  labs(x="Peak Threshold [Quantile]", y = "Median Peak Quantile") +
+  theme(
+    axis.text  = element_text(size = 12),
+    axis.title = element_text(size = 14)
+  )
+
+#n_events
+n_events<-df %>% 
+  #Count events by gage and peak threshold
+  group_by(gage, meteorologic_year, threshold) %>% 
+  summarise(n_events = n()) %>% 
+  #Estimate median and 25/75 quantile for each treshold
+  group_by(threshold) %>% 
+  summarise(
+    median = median(n_events),
+    low = quantile(n_events, 0.25), 
+    high = quantile(n_events, 0.75)
+  ) %>% 
+  #Plot
+  ggplot() +
+    geom_errorbar(
+      aes(x=threshold, ymin=low, ymax=high), 
+      width = 0, 
+      col="grey30")+
+    geom_point(
+      aes(x=threshold, y=median), 
+      shape = 21,
+      fill="steelblue4", 
+      col="grey30", 
+      size = 3) +
+    theme_bw() + 
+      labs(x="Peak Threshold [Quantile]", y = "Drying Events [#]") +
+      #scale_y_log10(limits = c(1,100))+
+      theme(
+        axis.text  = element_text(size = 12),
+        axis.title = element_text(size = 14)
+      )
+ 
+#peak quantile
+dry_date_start <-df %>% 
+  #Count events by gage and peak threshold
+  group_by(gage, meteorologic_year, threshold) %>% 
+  summarise(dry_date_start    = median(dry_date_start  ,na.rm=T)) %>% 
+  #Estimate median and 25/75 quantile for each treshold
+  group_by(threshold) %>% 
+  summarise(
+    median = median(dry_date_start),
+    low = quantile(dry_date_start  , 0.25), 
+    high = quantile(dry_date_start  , 0.75)
+  ) %>% 
+  #Plot
+  ggplot() +
+  geom_errorbar(
+    aes(x=threshold, ymin=low, ymax=high), 
+    width = 0, 
+    col="grey30")+
+  geom_point(
+    aes(x=threshold, y=median), 
+    shape = 21,
+    fill="steelblue4", 
+    col="grey30", 
+    size = 3) +
+  theme_bw() + 
+  labs(x="Peak Threshold [Quantile]", y = "Dry Event Start [Julian Day]") +
   theme(
     axis.text  = element_text(size = 12),
     axis.title = element_text(size = 14)
   )  
   
-  
-  
-  
-  
-  
-  
-  
+#4.2 Combine Plots   -----------------------------------------------------------
+png("docs/SI_sensitivity.jpg", width=7, height = 8, units="in", res=300)
+dry_dur + drying_rate + dry_dur + peak_quantile + n_events + dry_date_start +
+  plot_layout(ncol=2)
+dev.off()  
