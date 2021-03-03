@@ -322,8 +322,8 @@ df<-read_csv('data/SI_sensitivity.csv')
 #dry down duration
 dry_dur<-df %>% 
   #Count events by gage and peak threshold
-  group_by(gage, meteorologic_year, threshold) %>% 
-  summarise(peak2zero  = median(peak2zero,na.rm=T)) %>% 
+  # group_by(gage, meteorologic_year, threshold) %>% 
+  # summarise(peak2zero  = median(peak2zero,na.rm=T)) %>% 
   #Estimate median and 25/75 quantile for each treshold
   group_by(threshold) %>% 
   summarise(
@@ -353,8 +353,8 @@ dry_dur<-df %>%
 #drying rate
 drying_rate<-df %>% 
   #Count events by gage and peak threshold
-  group_by(gage, meteorologic_year, threshold) %>% 
-  summarise(drying_rate   = median(drying_rate ,na.rm=T)) %>% 
+  # group_by(gage, meteorologic_year, threshold) %>% 
+  # summarise(drying_rate   = median(drying_rate ,na.rm=T)) %>% 
   #Estimate median and 25/75 quantile for each treshold
   group_by(threshold) %>% 
   summarise(
@@ -384,8 +384,8 @@ drying_rate<-df %>%
 #no flow duration
 dry_dur<-df %>% 
   #Count events by gage and peak threshold
-  group_by(gage, meteorologic_year, threshold) %>% 
-  summarise(dry_dur   = median(dry_dur ,na.rm=T)) %>% 
+  # group_by(gage, meteorologic_year, threshold) %>% 
+  # summarise(dry_dur   = median(dry_dur ,na.rm=T)) %>% 
   #Estimate median and 25/75 quantile for each treshold
   group_by(threshold) %>% 
   summarise(
@@ -415,8 +415,8 @@ dry_dur<-df %>%
 #peak quantile
 peak_quantile<-df %>% 
   #Count events by gage and peak threshold
-  group_by(gage, meteorologic_year, threshold) %>% 
-  summarise(peak_quantile   = median(peak_quantile ,na.rm=T)) %>% 
+  # group_by(gage, meteorologic_year, threshold) %>% 
+  # summarise(peak_quantile   = median(peak_quantile ,na.rm=T)) %>% 
   #Estimate median and 25/75 quantile for each treshold
   group_by(threshold) %>% 
   summarise(
@@ -446,11 +446,12 @@ peak_quantile<-df %>%
 #n_events
 n_events<-df %>% 
   #Count events by gage and peak threshold
-  group_by(gage, meteorologic_year, threshold) %>% 
-  summarise(n_events = n()) %>% 
+  # group_by(gage, meteorologic_year, threshold) %>% 
+  # summarise(n_events = n()) %>% 
   #Estimate median and 25/75 quantile for each treshold
   group_by(threshold) %>% 
   summarise(
+    n_events = n(),
     median = median(n_events),
     low = quantile(n_events, 0.25), 
     high = quantile(n_events, 0.75)
@@ -478,8 +479,8 @@ n_events<-df %>%
 #peak quantile
 dry_date_start <-df %>% 
   #Count events by gage and peak threshold
-  group_by(gage, meteorologic_year, threshold) %>% 
-  summarise(dry_date_start    = median(dry_date_start  ,na.rm=T)) %>% 
+  # group_by(gage, meteorologic_year, threshold) %>% 
+  # summarise(dry_date_start    = median(dry_date_start  ,na.rm=T)) %>% 
   #Estimate median and 25/75 quantile for each treshold
   group_by(threshold) %>% 
   summarise(
@@ -507,7 +508,7 @@ dry_date_start <-df %>%
   )  
   
 #4.2 Combine Plots   -----------------------------------------------------------
-png("docs/SI_sensitivity.jpg", width=7, height = 8, units="in", res=300)
+png("docs/SI_sensitivity.png", width=7, height = 8, units="in", res=300)
 dry_dur + drying_rate + dry_dur + peak_quantile + n_events + dry_date_start +
   plot_layout(ncol=2)
 dev.off()  
