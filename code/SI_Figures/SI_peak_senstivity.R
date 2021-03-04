@@ -379,7 +379,7 @@ peak2zero <-df %>%
     scale_y_log10() +
     labs(x="Peak Threshold [Quantile]", y = "Dyring Duration [Days]") +
     theme(
-      axis.text  = element_text(size = 12),
+      axis.text  = element_text(size = 8),
       axis.title = element_text(size = 14)
     )
 
@@ -393,7 +393,7 @@ drying_rate<-df %>%
   scale_y_log10(limits=c(0.01,10)) +
   labs(x="Peak Threshold [Quantile]", y = "Dyring Rate [1/Days]")+
   theme(
-    axis.text  = element_text(size = 12),
+    axis.text  = element_text(size = 8),
     axis.title = element_text(size = 14)
   )
 
@@ -407,7 +407,7 @@ dry_dur<- df %>%
   scale_y_log10()+
   labs(x="Peak Threshold [Quantile]", y = "No Flow Duration [Days]") +
   theme(
-    axis.text  = element_text(size = 12),
+    axis.text  = element_text(size = 8),
     axis.title = element_text(size = 14)
   )
 
@@ -418,9 +418,9 @@ peak_quantile<- df %>%
     aes(x=threshold, y = peak_quantile),
     fill="steelblue4") + 
   theme_bw() +
-  labs(x="Peak Threshold [Quantile]", y = "Median Peak Quantile")+
+  labs(x="Peak Threshold [Quantile]", y = "Peak Quantile")+
   theme(
-    axis.text  = element_text(size = 12),
+    axis.text  = element_text(size = 8),
     axis.title = element_text(size = 14)
   )
 
@@ -432,9 +432,9 @@ freq_local<-df %>%
     fill="steelblue4") + 
   scale_y_log10() +
   theme_bw() +
-  labs(x="Peak Threshold [Quantile]", y = "Drying Events [#]") +
+  labs(x="Peak Threshold [Quantile]", y = "Drying Events Annually") +
   theme(
-    axis.text  = element_text(size = 12),
+    axis.text  = element_text(size = 8),
     axis.title = element_text(size = 14)
   )
 
@@ -448,7 +448,7 @@ dry_date_start <- df %>%
   theme_bw() +
   labs(x="Peak Threshold [Quantile]", y = "Dry Event Start [Julian Day]") +
   theme(
-    axis.text  = element_text(size = 12),
+    axis.text  = element_text(size = 8),
     axis.title = element_text(size = 14)
   )
 
