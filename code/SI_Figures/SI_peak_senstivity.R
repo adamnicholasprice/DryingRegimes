@@ -374,7 +374,7 @@ peak2zero <-df %>%
   ggplot() +
   geom_violin(
     aes(x=threshold, y = peak2zero),
-    fill="steelblue4") + 
+    fill="#f1a340",draw_quantiles = c(.50)) + 
     theme_bw() + 
     scale_y_log10() +
     labs(x="Peak Threshold [Quantile]", y = "Dyring Duration [Days]") +
@@ -388,7 +388,7 @@ drying_rate<-df %>%
   ggplot() +
   geom_violin(
     aes(x=threshold, y = drying_rate),
-    fill="steelblue4") + 
+    fill="#f1a340",draw_quantiles = c(.50)) + 
   theme_bw() + 
   scale_y_log10(limits=c(0.01,10)) +
   labs(x="Peak Threshold [Quantile]", y = "Dyring Rate [1/Days]")+
@@ -402,7 +402,7 @@ dry_dur<- df %>%
   ggplot() +
   geom_violin(
     aes(x=threshold, y = dry_dur),
-    fill="steelblue4") + 
+    fill="#f1a340",draw_quantiles = c(.50)) + 
   theme_bw() + 
   scale_y_log10()+
   labs(x="Peak Threshold [Quantile]", y = "No Flow Duration [Days]") +
@@ -416,7 +416,7 @@ peak_quantile<- df %>%
   ggplot() +
   geom_violin(
     aes(x=threshold, y = peak_quantile),
-    fill="steelblue4") + 
+    fill="#f1a340",draw_quantiles = c(.50)) + 
   theme_bw() +
   labs(x="Peak Threshold [Quantile]", y = "Peak Quantile")+
   theme(
@@ -429,7 +429,7 @@ freq_local<-df %>%
   ggplot() +
   geom_violin(
     aes(x=threshold, y = freq_local),
-    fill="steelblue4") + 
+    fill="#f1a340",draw_quantiles = c(.50)) + 
   scale_y_log10() +
   theme_bw() +
   labs(x="Peak Threshold [Quantile]", y = "Drying Events Annually") +
@@ -443,7 +443,7 @@ dry_date_start <- df %>%
   ggplot() +
   geom_violin(
     aes(x=threshold, y = dry_date_start),
-    fill="steelblue4") + 
+    fill="#f1a340",draw_quantiles = c(.50)) + 
   #scale_y_log10() +
   theme_bw() +
   labs(x="Peak Threshold [Quantile]", y = "Dry Event Start [Julian Day]") +
@@ -454,7 +454,7 @@ dry_date_start <- df %>%
 
   
 #4.2 Combine Plots   -----------------------------------------------------------
-png("docs/SI_sensitivity.png", width=7, height = 8, units="in", res=300)
+pdf("docs/SI_sensitivity.pdf")
   peak2zero  + drying_rate + 
   dry_dur + peak_quantile + 
   freq_local + dry_date_start +
