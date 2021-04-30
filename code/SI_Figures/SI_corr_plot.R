@@ -1,3 +1,5 @@
+
+
 sub$GEOL_REEDBUSH_DOM = NULL
 sub$X =NULL
 sub$gage=NULL
@@ -51,6 +53,16 @@ ggheatmap = ggheatmap +
 pdf('docs/corrPlot.pdf')
 ggheatmap
 dev.off()
+
+
+library(corrplot)
+corrplot(cormat, method="pie",type="upper")
+t = corrplot(cormat, method="circle",type="upper",tl.col="black")
+
+pdf('docs/corrPlot.pdf')
+t
+dev.off()
+
 
 
 library(corrplot)
