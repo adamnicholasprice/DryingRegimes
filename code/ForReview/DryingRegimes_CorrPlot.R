@@ -18,6 +18,7 @@
 library(corrplot)
 library(ggplot2)
 library(tidyverse)
+library(viridis)
 ############################# Code #################################
 
 # Load Data
@@ -39,6 +40,13 @@ df = df %>%  select( lulc_water_prc,lulc_dev_prc,lulc_forest_prc,lulc_barren_prc
 
 df  = df[is.finite(df$P.PET),]
 df$PERMAVE = NULL
+df$SANDAVE = NULL
+df$P_mm = NULL
+df$P_90 = NULL
+df$PET_mm = NULL
+df$PET_90 = NULL
+df$melt_mm = NULL
+
 
 get_lower_tri<-function(cormat){
   cormat[upper.tri(cormat)] <- NA
@@ -55,54 +63,14 @@ cormat <- round(cor(df),2)
 upper_tri <- get_upper_tri(cormat)
 
 ########### Correlogram
-# yy = cormat
 
-cormat = yy
-cormat[abs(cormat)>=0.7] = 1
 
 
 cols = viridis(20, option = "magma")
 
-cols = c(cols,"1"="#0000FF")
-# t = corrplot(cormat, method="circle",type="upper",tl.col="black")
-t = corrplot(cormat, method="square",type="upper",tl.col="black",col=cols)
+t= corrplot(cormat, method="circle",type="upper",tl.col="black")
 
-pdf('docs/corrPlot.pdf')
-t
+pdf('docs/response_plots/corrPlot.pdf')
+t = corrplot(cormat, method="circle",type="upper",tl.col="black")
 dev.off()
 
-
-
-
-
-# # Heatmap
-
-# melted_cormat <- melt(upper_tri, na.rm = TRUE)
-# ggheatmap <- ggplot(melted_cormat, aes(Var2, Var1, fill = value))+
-#   geom_tile(color = "white")+
-#   scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
-#                        midpoint = 0, limit = c(-1,1), space = "Lab", 
-#                        name="Pearson\nCorrelation") +
-#   theme_minimal()+ # minimal theme
-#   theme(axis.text.x = element_text(angle = 45, vjust = 1, 
-#                                    size = 12, hjust = 1))+
-#   coord_fixed()
-# 
-# ggheatmap = ggheatmap + 
-#   geom_text(aes(Var2, Var1, label = value), color = "black", size = 1) +
-#   theme(
-#     axis.title.x = element_blank(),
-#     axis.title.y = element_blank(),
-#     panel.grid.major = element_blank(),
-#     panel.border = element_blank(),
-#     panel.background = element_blank(),
-#     axis.ticks = element_blank(),
-#     legend.justification = c(1, 0),
-#     legend.position = c(0.6, 0.7),
-#     legend.direction = "horizontal")+
-#   guides(fill = guide_colorbar(barwidth = 7, barheight = 1,
-#                                title.position = "top", title.hjust = 0.5))
-# 
-# pdf('docs/corrPlot.pdf')
-# ggheatmap
-# dev.off()

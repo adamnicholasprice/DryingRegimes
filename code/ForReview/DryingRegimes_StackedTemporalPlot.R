@@ -143,9 +143,9 @@ ts_plot <-
   scale_fill_manual(
     values=cols, 
     name = "Cluster") +
-  scale_x_date(labels = date_format("%B"),expand = c(0,0))+
+  scale_x_date(labels = date_format("%b"),expand = c(0,0),date_breaks = "months")+
   theme_bw() + 
-  ylab('Proportion of Gages') +
+  ylab('Proportion of drying events') +
   xlab('Month') +
   #Axes Options
   theme(
@@ -181,9 +181,9 @@ ts.count.plot = ggplot(ts.count) +
   scale_color_manual(
     values=cols, 
     name = "Cluster")+
-  scale_x_date(labels = date_format("%B"),expand = c(0,0))+
+  scale_x_date(labels = date_format("%B"),expand = c(0,0),date_breaks = "months")+
   theme_bw() + 
-  ylab('Number of Events') +
+  ylab('Number of drying events') +
   xlab('Month') +
   #Axes Options
   theme(axis.title = element_text(size=14),
@@ -202,6 +202,7 @@ ts.count.plot = ts.count.plot + annotate("text", x = as.Date("1970-09-01"),
 library(patchwork)
 
 out = ts.count.plot / ts_plot 
+out
 
 pdf("docs/response_plots/stackedClusterPlotsALT.pdf", width = 10, height=6)
 out
@@ -227,9 +228,9 @@ ts.count.plot = ggplot(ts.count) +
   scale_color_manual(
     values=cols,
     name = "Cluster")+
-  scale_x_date(labels = date_format("%B"),expand = c(0,0))+
+  scale_x_date(labels = date_format("%B"),expand = c(0,0),date_breaks = "months",minor_breaks = NULL)+
   theme_bw() + 
-  ylab('Number of Events') +
+  ylab('Number of drying events') +
   xlab('Month') +
   #Axes Options
   theme(axis.title = element_text(size=14),
@@ -245,6 +246,7 @@ ts.count.plot = ts.count.plot + annotate("text", x = as.Date("1970-09-01"),
                                          color = c("#4477AA","#66CCEE","#228833","#CCBB44","#000000"))
 
 out = ts.count.plot / ts_plot 
+out
 
 pdf("docs//stackedClusterPlots_ALT2.pdf")
 out

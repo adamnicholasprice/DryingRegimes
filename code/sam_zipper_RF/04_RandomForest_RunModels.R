@@ -132,7 +132,7 @@ for (m in metrics){
     # set up model engine
     tune_res <-
       tune_res_all %>% 
-      subset(metric == m & region_rf == r & .metric == "mae") %>% 
+      subset(.metric == "mae") %>% 
       dplyr::filter(mean == min(mean))
     
     rf_engine <- 

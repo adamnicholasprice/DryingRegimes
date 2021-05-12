@@ -24,7 +24,7 @@ library(sf)
 ############################# Code ################################
 
 ########## Load Data #############
-df = read.csv("data/kmeans.csv")
+df = read.csv("data/kmeans_NoFreq.csv")
 
 
 
@@ -70,24 +70,40 @@ pal_regions <-
 
 # Calculate mode and cluster membership proportion
 
-## Plot
+tt = rwrfhydro::gages2Attr
+tt$STAID = as.integer(tt$STAID)
 
+
+noCoor = as.data.frame(df$gage)
+colnames(noCoor) = 'gage'
+
+coors = left_join(noCoor,tt,by=c('gage'='STAID'))
+
+df$dec_lat_va = coors$LAT_GAGE
+df$dec_long_va = coors$LNG_GAGE
+
+
+##### Get proportion of events
 mode <- function(x) {
   ux <- unique(x)
   ux[which.max(tabulate(match(x, ux)))]
 }
-final %>% select(gage,kmeans) %>% group_by(gage,kmeans)
 
-prop = df %>% group_by(gage,kmeans,n) %>% summarise(kmeans.count = n())
+tt = df %>% select(gage,kmeans) %>% group_by(gage,kmeans) %>% count()
+
+prop = tt %>% group_by(gage,kmeans,n) %>% summarise(kmeans.count = n())
 
 prop$prop = prop$kmeans.count/prop$n
 
 
 colnames(prop)  = c("gage",'cluster','total_events','event_count','proportion')
 
-k.means = df %>% select(gage,dec_lat_va,dec_long_va,CLASS,Name) %>% left_join(prop,.,by="gage") %>% unique()
+k.means = df %>% select(gage,dec_lat_va,dec_long_va,AggEcoregion) %>% left_join(prop,.,by="gage") %>% unique()
 
 
+######################################################## 
+############################ Plot ######################
+######################################################## 
 ### Load map data
 states <- st_as_sf(map("state", plot = FALSE, fill = TRUE))
 
@@ -118,8 +134,9 @@ map = map +
 
 
 map = map + 
-  geom_point(data=k.means, aes(x=dec_long_va, y=dec_lat_va,alpha = proportion),color="black",shape=1)+
-  geom_point(data=k.means, aes(x=dec_long_va, y=dec_lat_va,colour = factor(cluster), alpha = proportion))+
+  # geom_point(data=k.means, aes(x=dec_long_va, y=dec_lat_va,alpha = proportion),color="black",shape=1)+
+  geom_point(data=k.means, aes(x=dec_long_va, y=dec_lat_va,alpha = proportion),fill="black",size=.5)+
+  # geom_point(data=k.means, aes(x=dec_long_va, y=dec_lat_va,colour = factor(cluster), alpha = proportion))+
   scale_color_manual(values = cols)+
   # scale_radius(trans='sqrt',breaks = c(.2,.4,.6,.8,1),labels = c(5,4,3,2,1),name = "Number of Cluster Changes") +
   # scale_radius(trans = 'sqrt',breaks = c(0,.2,.4,.6,.8,1),name = "Proportion of Events in Cluster")+
@@ -127,8 +144,6 @@ map = map +
   facet_wrap(~cluster)+
   theme_void()
 
-pdf("docs/spatialCluster.pdf")
+pdf("docs/response_plots/test2.pdf")
 map
 dev.off()
-
-

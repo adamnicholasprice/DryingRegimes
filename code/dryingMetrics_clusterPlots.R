@@ -25,7 +25,7 @@ library(maps)
 ############################# Code ################################
 
 ########## Load Data #############
-df = read.csv("data/kmeans.csv")
+df = read.csv("data/zz_archive/kmeans.csv")
 
 
 
