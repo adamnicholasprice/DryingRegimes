@@ -7,6 +7,7 @@
 *.tar
 *.zip
 *icon*
+docs/
 data/
 .RData
 .Rhistory
