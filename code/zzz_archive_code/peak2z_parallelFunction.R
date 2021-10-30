@@ -65,9 +65,12 @@
     
     
     ##-now flag those derivative changes
+    
+    peak.threshold <- quantile(data$X_00060_00003, 0.5) # define the peak threshold to avoid regarding small rises during low flows as peaks.
+    
     for(i in 2:(nrow(data)-1)){
       ##-if the slope back is greater than some threshold and the slope forward is negative, flag it as a peak
-      if(data$slp.b[i]>0.0001 & data$slp.f[i]<0){
+      if(data$slp.b[i]>0.0001 & data$slp.f[i]<0 & data$X_00060_00003[i] >= peak.threshold){
         data$peak.flag[i] = 1 }
       else{
         ##-otherwise don't
@@ -92,11 +95,11 @@
     peak2z = rep(NA, length.out = length(nf_start))
     
     for (i in 1:length(nf_start)){
-      if (length(nf_start[i] - tt[which(tt==nf_start[i])-1])==0){
-        next
+      if(which(tt==nf_start[i]) == 1){
+          next
       }
-      else{
-        peak2z[i] = nf_start[i] - tt[which(tt==nf_start[i])-1]
+      if ((length(nf_start[i] - tt[which(tt==nf_start[i])-1]) > 0) & (tt[which(tt==nf_start[i])-1] %in% peakstart)){
+          peak2z[i] = nf_start[i] - tt[which(tt==nf_start[i])-1]
       }
     }
     
